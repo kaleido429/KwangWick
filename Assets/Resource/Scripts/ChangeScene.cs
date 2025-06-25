@@ -11,26 +11,27 @@ public class ChangeScene : MonoBehaviour
     //     GetComponent<Image>().alphaHitTestMinimumThreshold = alphaThreshold;
     // }
 
-    public void ChangeSceneBtn()
-    {
-        string btnName = this.gameObject.name;
+    public GameObject tutorialPanel;
 
-        if (btnName == "Start")
-        {
-            SceneManager.LoadScene("Gameplay");
-        }
-        else if (btnName == "Settings")
-        {
-            GameObject settingsPanel = GameObject.Find("settingsPanel");
-            if (settingsPanel != null)
-            {
-                settingsPanel.SetActive(true);
-            }
-        }
-        else if (btnName == "Exit")
-        {
-            Application.Quit();
-            Debug.Log("게임 종료됨.");
-        }
+    void Start()
+    {
+        tutorialPanel.SetActive(false);
     }
+
+    public void GameStart()
+    {
+        SceneManager.LoadScene("Gameplay");
+    }
+
+    public void Startbtn()
+    {
+        tutorialPanel.SetActive(true);
+    }
+
+    public void ExitBtn()
+    {
+        Application.Quit();
+        Debug.Log("게임 종료됨.");
+    }
+
 }

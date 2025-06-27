@@ -886,6 +886,9 @@ MonoBehaviour:
   enableAutoRecording: 1
   autoRecordingDuration: 2
   recordingStartDelay: 1
+  videoWidth: 1280
+  videoHeight: 720
+  frameRate: 30
 --- !u!4 &877696875
 Transform:
   m_ObjectHideFlags: 0

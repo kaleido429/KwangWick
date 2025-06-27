@@ -10,6 +10,11 @@ public class FFmpegController : MonoBehaviour
     public bool enableAutoRecording = true;
     public float autoRecordingDuration = 3f;
     public float recordingStartDelay = 2f;
+
+    [Header("Video Settings")]
+    public int videoWidth = 1280;
+    public int videoHeight = 720;
+    public int frameRate = 30;
     
     private bool isReady = false;
     private bool isRecording = false;
@@ -20,7 +25,7 @@ public class FFmpegController : MonoBehaviour
     private static extern void InitFFmpeg(); // 초기화 함수 직접 호출
 
     [DllImport("__Internal")]
-    private static extern void startRecording();
+    private static extern void startRecording(int width, int height, int framerate);
     
     [DllImport("__Internal")]
     private static extern void stopRecording();
@@ -87,8 +92,8 @@ public class FFmpegController : MonoBehaviour
         }
         
         #if UNITY_WEBGL && !UNITY_EDITOR
-            Debug.Log("Calling startRecording...");
-            startRecording();
+            Debug.Log($"Calling startRecording with {videoWidth}x{videoHeight} @ {frameRate}fps");
+            startRecording(videoWidth, videoHeight, frameRate);
             isRecording = true;
         #endif
     }

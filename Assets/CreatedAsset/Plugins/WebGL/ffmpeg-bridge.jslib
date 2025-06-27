@@ -34,8 +34,13 @@ mergeInto(LibraryManager.library, {
             const { FFmpeg } = window.FFmpegWASM;
             window.ffmpeg = new FFmpeg();
 
+            // FFmpeg 내부 로그를 브라우저 콘솔에 출력하도록 로거 추가
+            window.ffmpeg.on('log', ({ type, message }) => {
+                console.log(`[FFmpeg log] ${type}: ${message}`);
+            });
+
             // 4. 생성된 인스턴스의 load() 메소드를 호출하여 코어 파일 로드
-            const coreURL = new URL('StreamingAssets/ffmpeg-core.mt.js', document.baseURI).href;
+            const coreURL = new URL('StreamingAssets/ffmpeg-core.js', document.baseURI).href;
             await window.ffmpeg.load({ coreURL });
             
             console.log("✅ FFmpeg MT core loaded and instance created successfully!");
@@ -48,15 +53,16 @@ mergeInto(LibraryManager.library, {
     },
 
     // startRecording과 stopRecording 함수는 수정할 필요 없습니다.
-    startRecording: function() {
+    startRecording: function(width, height, framerate) {
         try {
-            if (!window.ffmpeg || !window.ffmpeg.isLoaded()) { return; }
+            if (!window.ffmpeg || !window.ffmpeg.loaded) { return; } // isLoaded() -> loaded
             const canvas = document.getElementById('unity-canvas');
             if (!canvas) { return; }
             
-            console.log("🎬 [FFmpeg-MT Mode] Starting recording...");
+            console.log(`🎬 [FFmpeg-MT Mode] Starting recording... (${width}x${height} @ ${framerate}fps)`);
             window.recordingStartTime = new Date();
-            const stream = canvas.captureStream(30);
+            // C#에서 전달받은 framerate 사용
+            const stream = canvas.captureStream(framerate); 
             window.tempRecorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp8' });
             window.tempChunks = [];
             window.tempRecorder.ondataavailable = (event) => {
@@ -77,11 +83,10 @@ mergeInto(LibraryManager.library, {
                     
                     console.log(`📝 Starting MT conversion: ${outputFileName}`);
                     
+                    // 가장 기본적인 옵션으로 h264 코덱 변환을 다시 시도합니다.
                     await window.ffmpeg.exec([
                         '-i', 'input.webm',
-                        '-an',
-                        '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2',
-                        '-pix_fmt', 'yuv420p',
+                        // '-c:v', 'copy', // copy 옵션 제거
                         outputFileName
                     ]);
                     

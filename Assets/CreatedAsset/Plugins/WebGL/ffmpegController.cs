@@ -1,110 +1,139 @@
 using System.Collections;
 using System.Runtime.InteropServices;
 using UnityEngine;
-using UnityEngine.UI;
 
 public class FFmpegController : MonoBehaviour
 {
-    // jslib 파일에 정의한 JavaScript 함수들을 C#에서 인식하도록 선언합니다.
-    [DllImport("__Internal")]
-    private static extern void InitFFmpeg();
-
-    [DllImport("__Internal")]
-    private static extern void AddFrame(byte[] data, int dataLength, string fileName);
-
-    [DllImport("__Internal")]
-    private static extern void EndRecordingAndEncode(string outputName, int framerate);
-
-    // 상태를 표시할 Text UI만 남겨둡니다.
-    public Text statusText;
-
+    [Header("Auto Recording Settings")]
+    [Tooltip("Enable auto recording on start")]
+    public bool enableAutoRecording = true;
+    
+    [Tooltip("Auto recording duration (seconds)")]
+    [Range(1, 60)]
+    public float autoRecordingDuration = 3f;
+    
+    [Tooltip("Delay before starting recording (seconds)")]
+    [Range(0, 10)]
+    public float recordingStartDelay = 2f;
+    
+    // --- 간소화된 상태 변수 ---
+    private bool isReady = false;
     private bool isRecording = false;
-    private int frameCount = 0;
-    private int framerate = 30; // 30fps로 녹화
+    private bool autoRecordingCompleted = false;
+
+    // --- 새롭고 간결해진 JavaScript 함수 선언 ---
+    [DllImport("__Internal")]
+    private static extern bool IsFFmpegReady();
+
+    [DllImport("__Internal")]
+    private static extern void startRecording();
+    
+    [DllImport("__Internal")]
+    private static extern void stopRecording();
 
     void Start()
     {
-        // 초기 상태 설정
-        statusText.text = "Initializing FFmpeg...";
-
-        // WebGL 빌드에서만 JavaScript 함수를 호출합니다.
+        Debug.Log("=== FFmpeg Controller Started (MP4 Mode) ===");
+        
         #if UNITY_WEBGL && !UNITY_EDITOR
-            InitFFmpeg();
+            StartCoroutine(InitializeFFmpegSequence());
         #else
-            statusText.text = "Run in a WebGL build to test auto-recording.";
+            Debug.Log("Editor mode - FFmpeg test skipped");
         #endif
     }
-    
-    // --- JavaScript로부터 메시지를 받는 메소드들 ---
-    
-    // [변경점] FFmpeg가 준비되면, 바로 10초 녹화 코루틴을 시작합니다.
-    public void OnFFmpegReady(string message)
-    {
-        Debug.Log(message); // "FFmpeg is Ready!"
-        statusText.text = "FFmpeg Ready. Starting auto-record...";
-        StartCoroutine(RecordForDuration(10.0f)); // 10초 동안 녹화 시작
-    }
 
-    public void OnEncodeComplete(string filename)
+    private IEnumerator InitializeFFmpegSequence()
     {
-        Debug.Log($"Encoding complete: {filename}");
-        statusText.text = $"10-second recording complete! {filename} downloaded.";
-    }
-    
-    // [추가] 지정된 시간 동안 녹화를 진행하는 전체 과정을 관리하는 코루틴
-    private IEnumerator RecordForDuration(float duration)
-    {
-        // 1. 녹화 시작
-        StartRecording();
-        
-        // 2. 지정된 시간(duration)만큼 대기
-        yield return new WaitForSeconds(duration);
+        Debug.Log("Waiting for FFmpeg to be ready... (Requires secure server with COOP/COEP headers)");
 
-        // 3. 녹화 종료
-        StopRecording();
-    }
+        float timeout = 30f; // 30초 타임아웃
+        float timer = 0f;
 
-    // --- 내부 로직 메소드들 (기존과 거의 동일) ---
-    private void StartRecording()
-    {
-        if (isRecording) return;
-        
-        isRecording = true;
-        frameCount = 0;
-        statusText.text = "Auto-Recording for 10 seconds...";
-        StartCoroutine(CaptureFrames());
-    }
-
-    private void StopRecording()
-    {
-        if (!isRecording) return;
-        
-        isRecording = false;
-        statusText.text = "Encoding... Please wait.";
-        Debug.Log("10 seconds elapsed. Stopping recording and starting encode.");
-
-        #if UNITY_WEBGL && !UNITY_EDITOR
-            EndRecordingAndEncode("auto-record-10s.mp4", framerate);
-        #endif
-    }
-    
-    // 화면 프레임을 주기적으로 캡처하는 코루틴 (기존과 동일)
-    private IEnumerator CaptureFrames()
-    {
-        while (isRecording)
+        // JavaScript의 isFFmpegReady 플래그가 true가 될 때까지 매 프레임 확인
+        while (!IsFFmpegReady())
         {
-            yield return new WaitForEndOfFrame();
-            Texture2D texture = ScreenCapture.CaptureScreenshotAsTexture();
-            byte[] data = texture.EncodeToPNG();
-            Destroy(texture);
-            string fileName = $"frame-{frameCount:D4}.png";
+            if (timer > timeout)
+            {
+                Debug.LogError("❌ FFmpeg initialization timed out. Ensure you are running on a secure server with COOP/COEP headers.");
+                isReady = false;
+                yield break; // 코루틴 종료
+            }
 
-            #if UNITY_WEBGL && !UNITY_EDITOR
-                AddFrame(data, data.Length, fileName);
-            #endif
-            frameCount++;
-
-            yield return new WaitForSecondsRealtime(1f / framerate);
+            timer += Time.deltaTime;
+            yield return null; // 다음 프레임까지 대기
         }
+
+        // 루프가 성공적으로 끝나면 FFmpeg가 준비된 것
+        isReady = true;
+        Debug.Log("✅ FFmpeg is ready for use!");
+        
+        // 자동 녹화 시작
+        if (enableAutoRecording && !autoRecordingCompleted)
+        {
+            Debug.Log($"Auto recording will start in {recordingStartDelay} seconds for {autoRecordingDuration} seconds");
+            yield return new WaitForSeconds(recordingStartDelay);
+            StartAutoRecording();
+        }
+    }
+
+    private void StartAutoRecording()
+    {
+        if (isRecording || autoRecordingCompleted) return;
+        
+        Debug.Log("🔴 Starting auto recording...");
+        StartManualRecording();
+        
+        StartCoroutine(StopAutoRecordingAfterDelay());
+        autoRecordingCompleted = true;
+    }
+
+    private IEnumerator StopAutoRecordingAfterDelay()
+    {
+        yield return new WaitForSeconds(autoRecordingDuration);
+        Debug.Log("⏹️ Auto recording completed");
+        StopManualRecording();
+    }
+
+    // --- 간소화된 수동 녹화 제어 ---
+    public void StartManualRecording()
+    {
+        if (isRecording)
+        {
+            Debug.LogWarning("Already recording.");
+            return;
+        }
+        
+        if (!isReady)
+        {
+            Debug.LogError("Cannot start recording: FFmpeg is not ready.");
+            return;
+        }
+        
+        #if UNITY_WEBGL && !UNITY_EDITOR
+            Debug.Log("Calling startRecording (MP4)...");
+            startRecording();
+            isRecording = true;
+        #endif
+    }
+
+    public void StopManualRecording()
+    {
+        if (!isRecording)
+        {
+            Debug.LogWarning("Not currently recording.");
+            return;
+        }
+        
+        #if UNITY_WEBGL && !UNITY_EDITOR
+            Debug.Log("Calling stopRecording (MP4 conversion)...");
+            stopRecording();
+            isRecording = false;
+        #endif
+    }
+
+    // JavaScript에서 변환 완료 후 호출해 줄 수 있는 함수
+    public void OnEncodeComplete(string result)
+    {
+        Debug.Log($">>> Encode Complete: {result}");
     }
 }

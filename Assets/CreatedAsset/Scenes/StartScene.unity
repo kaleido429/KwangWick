@@ -1325,10 +1325,14 @@ MonoBehaviour:
       m_Calls: []
   m_text: "Assets Used:\n- \"Abandoned Factory (Lite)\" \u2013 Tirgames assets\nLicense:
     Unity Asset Store EULA\nSource: https://assetstore.unity.com/packages/3d/props/industrial/abandoned-factory-lite-62597\n\n-
-    \"Survivalist Character\" \u2014 Slayver\nLicense: Unity Asset Store EULA (Extension
-    Asset)\nSource: https://assetstore.unity.com/packages/3d/characters/survivalist-character-181470\n\nGAME
+    \"Survivalist Character\" - Slayver\nLicense: Unity Asset Store EULA (Extension
+    Asset)\nSource: https://assetstore.unity.com/packages/3d/characters/survivalist-character-181470\n\n-
+    \"Low-Poly M16\" - TastyTony\nLicense: Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/).\nSource:
+    https://skfb.ly/69vDC\r\n\r\n- \"Unreal Engine 5 FPS Game Tutorial Project\xA9
+    2024\" - Infima Games\nLicense: Creative Commons Attribution 4.0 International
+    (http://creativecommons.org/licenses/by/4.0/).\nSource: https://infimagames.gumroad.com/l/fps-tutorial-source-files\n\nGAME
     DEVELOPED BY\nFairplayFairy\nKwangwoon University Computer Information Engineering\n\nDEVELOPMENT
-    TEAM\nKang Minyoung\nKim Sunjung\nSeol Jangheon\nJang Jiho\nJung Hyeseong\n"
+    TEAM\nKang Minyoung\nKim Sunjung\nSeol Jangheon\nJang Jiho\nJung Haeseong\n"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}

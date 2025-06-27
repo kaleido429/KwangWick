@@ -12,10 +12,12 @@ public class ChangeScene : MonoBehaviour
     // }
 
     public GameObject tutorialPanel;
+    public GameObject creditPanel;
 
     void Start()
     {
         tutorialPanel.SetActive(false);
+        creditPanel.SetActive(false);
     }
 
     public void GameStart()
@@ -32,6 +34,16 @@ public class ChangeScene : MonoBehaviour
     {
         Application.Quit();
         Debug.Log("게임 종료됨.");
+    }
+
+    public void CreditBtn()
+    {
+        creditPanel.SetActive(true);
+    }
+
+    public void CloseCreditBtn()
+    {
+        creditPanel.SetActive(false);
     }
 
 }

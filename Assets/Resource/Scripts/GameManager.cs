@@ -33,8 +33,8 @@ public class GameManager : MonoBehaviour
     {
         state = GameState.Playing;
         resultPanel.SetActive(false);
-        sec = 5.0f;
-        min = 0;
+        sec = 0f;
+        min = 1;
     }
 
     void Update()

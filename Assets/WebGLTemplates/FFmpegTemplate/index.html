@@ -4,49 +4,22 @@
     <meta charset="utf-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <title>Unity WebGL Player | KwangWickWebGL</title>
-    <script src="StreamingAssets/ffmpeg.js"></script>
-  </head>
+    </head>
+
   <body style="text-align: center; padding: 0; border: 0; margin: 0;">
     <canvas id="unity-canvas" width="960" height="600" style="width: 100%; height: 100%; background: #231F20"></canvas>
     <script src="Build/KwangWickWebGL.loader.js"></script>
     <script>
+      // Unity 인스턴스 생성만 담당
       createUnityInstance(document.querySelector("#unity-canvas"), {
-        dataUrl: "Build/KwangWickWebGL.data.gz",
-        frameworkUrl: "Build/KwangWickWebGL.framework.js.gz",
-        codeUrl: "Build/KwangWickWebGL.wasm.gz",
+        dataUrl: "Build/KwangWickWebGL.data",
+        frameworkUrl: "Build/KwangWickWebGL.framework.js",
+        codeUrl: "Build/KwangWickWebGL.wasm",
         streamingAssetsUrl: "StreamingAssets",
         companyName: "DefaultCompany",
         productName: "KwangWickWebGL",
         productVersion: "0.1",
       });
-    </script>
-    <script>
-      let mediaRecorder;
-      let recordedChunks = [];
-
-      function startRecording() {
-        const canvas = document.getElementById('unity-canvas');
-        const stream = canvas.captureStream(30); // 30fps
-        mediaRecorder = new MediaRecorder(stream, { mimeType: "video/webm" });
-        recordedChunks = [];
-        mediaRecorder.ondataavailable = function(e) {
-          if (e.data.size > 0) recordedChunks.push(e.data);
-        };
-        mediaRecorder.start();
-      }
-
-      function stopRecording() {
-        mediaRecorder.stop();
-        mediaRecorder.onstop = function() {
-          const blob = new Blob(recordedChunks, { type: "video/webm" });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = "recorded.webm";
-          a.click();
-          URL.revokeObjectURL(url);
-        };
-      }
     </script>
   </body>
 </html>

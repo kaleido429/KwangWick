@@ -885,7 +885,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   enableAutoRecording: 1
   autoRecordingDuration: 2
-  recordingStartDelay: 0.1
+  recordingStartDelay: 1
 --- !u!4 &877696875
 Transform:
   m_ObjectHideFlags: 0

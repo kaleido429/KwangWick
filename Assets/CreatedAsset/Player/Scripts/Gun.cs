@@ -11,9 +11,11 @@ enum HitType
 public class Gun : MonoBehaviour
 {
 	[SerializeField] private Transform cameraTransform;
+    private readonly int headDamage = 3;
+    private readonly int bodyDamage = 1;
 
-	// 카메라 자동 설정
-	void Start()
+    // 카메라 자동 설정
+    void Start()
 	{
 		if (cameraTransform == null)
 		{
@@ -26,34 +28,25 @@ public class Gun : MonoBehaviour
     	Ray ray = new Ray(cameraTransform.position, cameraTransform.forward);
    		if (Physics.Raycast(ray, out RaycastHit hit, 100f))
 	    {
-        	Debug.Log($"[SHOOT] Hit: {hit.collider.name}, Tag: {hit.collider.tag}");
-
         	var target = hit.collider.GetComponentInParent<Target>();
-        	if (target == null)
+        	if (target != null)
         	{
-            	Debug.Log("Target component not found on hit object!");
-            }
-        	else
-        	{
-            	Debug.Log("Target found, calling Hit()");
-                int damage = hit.collider.CompareTag("Head") ? 3 : 1;
+                int damage = hit.collider.CompareTag("Head") ? headDamage : bodyDamage;
                 bool killed = target.Hit(damage);
 
-                if(killed)
+                if(damage == 3)
                 {
-                    Debug.Log("Target killed!");
+                    return (int)HitType.Head;
+                }
+                else if (killed)
+                {
                     return (int)HitType.Kill;
                 }
                 else
                 {
-                    Debug.Log("Target hit but not killed.");
-                    return damage > 1 ? (int)HitType.Head : (int)HitType.Body;
+                    return (int)HitType.Body;
                 }
             }
-    	}
-    	else
-    	{
-        	Debug.Log("Nothing hit by raycast!");
     	}
         return (int)HitType.None;
     }

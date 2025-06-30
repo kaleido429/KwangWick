@@ -1,6 +1,6 @@
-using UnityEngine.UI;
-using UnityEngine;
 using TMPro;
+using UnityEngine;
+using System.Collections;
 
 public enum GameState
 {
@@ -13,13 +13,20 @@ public class GameManager : MonoBehaviour
 {
     public static GameManager Instance;
     public GameState state;
+    public GameObject countdownPanel;
     public GameObject resultPanel;
+    [SerializeField] private TMP_Text countdownText;
     [SerializeField] private TMP_Text timeText;
     [SerializeField] private TMP_Text finalScoreText;
+    [SerializeField] private TMP_Text accuracyText;
+    [SerializeField] private TMP_Text headshotsText;
     private float sec;
     private int min;
 
     public GameObject[] objectsToDisable; // 끌 오브젝트 배열
+
+    public GameObject playerGameObject;
+    private PlayerInput playerInput;
 
     private void Awake()
     {
@@ -31,10 +38,15 @@ public class GameManager : MonoBehaviour
 
     void Start()
     {
-        state = GameState.Playing;
-        resultPanel.SetActive(false);
-        sec = 0f;
-        min = 1;
+        if(playerGameObject == null)
+        {
+            playerGameObject = GameObject.FindWithTag("Player");
+        }
+        if(playerGameObject != null)
+        {
+            playerInput = playerGameObject.GetComponent<PlayerInput>();
+        }
+        StartCoroutine(CountdownToStart()); // 게임 시작 카운트다운 시작
     }
 
     void Update()
@@ -62,7 +74,28 @@ public class GameManager : MonoBehaviour
             // 화면에 시간 표시
             timeText.text = string.Format("{0:D2}:{1:D2}", min, (int)sec);
         }
+    }
 
+    IEnumerator CountdownToStart()
+    {
+        playerInput.SetInputActive(false);
+        countdownPanel.SetActive(true);
+        resultPanel.SetActive(false);
+
+        for (int i = 3; i > 0; i--)
+        {
+            countdownText.text = i.ToString();
+            yield return new WaitForSeconds(1f);    // 1초 대기
+        }
+
+        countdownText.text = "Start!";
+        yield return new WaitForSeconds(0.5f);      // "Start!" 표시 후 0.5초 대기
+
+        state = GameState.Playing;                  // 게임 시작
+        playerInput.SetInputActive(true);           // 플레이어 입력 활성화
+        countdownPanel.SetActive(false);
+        sec = 0f;
+        min = 1;
     }
 
     public void GameEnd()
@@ -78,8 +111,16 @@ public class GameManager : MonoBehaviour
         Cursor.visible = true;
         Cursor.lockState = CursorLockMode.None;
 
+        int finalScore = ScoreManager.Instance.GetScore();
+        int totalShots = ScoreManager.Instance.GetShots();
+        int totalHits = ScoreManager.Instance.GetHits();
+        int totalHeadshots = ScoreManager.Instance.GetHeadshots();
+        double accuracy = totalShots > 0 ? (double)totalHits / totalShots * 100 : 0;
+
         resultPanel.SetActive(true);
-        finalScoreText.text = $"Final Score: {ScoreManager.Instance.GetScore()}";
+        finalScoreText.text = $"Final Score: {finalScore}";
+        accuracyText.text = $"Accuracy: {totalHits}/{totalShots} ({accuracy:F2}%)";
+        headshotsText.text = $"Headshots: {totalHeadshots}";
     }
 
 }

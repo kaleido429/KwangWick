@@ -1,5 +1,3 @@
-// FFmpegController.cs (새로운 구조)
-
 using UnityEngine;
 using System.Runtime.InteropServices;
 using System.Collections;
@@ -7,14 +5,13 @@ using System.Collections;
 public class FFmpegController : MonoBehaviour
 {
     [Header("Auto Recording Settings")]
-    public bool enableAutoRecording = true;
-    public float autoRecordingDuration = 3f;
-    public float recordingStartDelay = 2f;
+    public float autoRecordingDuration = 10f;
+    public float recordingStartDelay = 1f;
 
     [Header("Video Settings")]
-    public int videoWidth = 1280;
-    public int videoHeight = 720;
-    public int frameRate = 30;
+    public int videoWidth = 1280; // 1280x720
+    public int videoHeight = 720; // 1280x720
+    public int frameRate = 15;
     
     private bool isReady = false;
     private bool isRecording = false;
@@ -22,7 +19,7 @@ public class FFmpegController : MonoBehaviour
 
     // --- JSLib 함수 선언 ---
     [DllImport("__Internal")]
-    private static extern void InitFFmpeg(); // 초기화 함수 직접 호출
+    private static extern void InitFFmpeg();
 
     [DllImport("__Internal")]
     private static extern void startRecording(int width, int height, int framerate);
@@ -32,15 +29,10 @@ public class FFmpegController : MonoBehaviour
 
     void Start()
     {
-        Debug.Log("=== FFmpeg Controller Started (New Arch) ===");
+        Debug.Log("=== FFmpeg Controller Started (Auto Recording Only) ===");
         
         #if UNITY_WEBGL && !UNITY_EDITOR
-            // JSLib에 초기화 시작 신호를 보냄
-            InitFFmpeg();
-        #else
-            Debug.Log("Editor mode - FFmpeg test skipped. Simulating success for testing.");
-            // 에디터 테스트를 위해 강제로 준비 완료 상태로 만듦
-            OnFFmpegReady("Editor Test Success");
+        InitFFmpeg();
         #endif
     }
     
@@ -50,10 +42,10 @@ public class FFmpegController : MonoBehaviour
         Debug.Log($"✅ FFmpeg is ready! Message: {message}");
         isReady = true;
         
-        // 자동 녹화 시작
-        if (enableAutoRecording && !autoRecordingCompleted)
+        // 자동 녹화 시작 (조건 없이 바로 실행)
+        if (!autoRecordingCompleted)
         {
-            StartCoroutine(StartAutoRecordingSequence());
+            StartCoroutine(AutoRecordingSequence());
         }
     }
 
@@ -64,27 +56,34 @@ public class FFmpegController : MonoBehaviour
         isReady = false;
     }
     
-    private IEnumerator StartAutoRecordingSequence()
+    private IEnumerator AutoRecordingSequence()
     {
         Debug.Log($"Auto recording will start in {recordingStartDelay} seconds for {autoRecordingDuration} seconds");
+        
+        // 1단계: 녹화 시작 전 대기
         yield return new WaitForSeconds(recordingStartDelay);
         
-        StartManualRecording();
+        // 2단계: 녹화 시작
+        StartRecording();
         
+        // 3단계: 설정된 시간만큼 녹화
         yield return new WaitForSeconds(autoRecordingDuration);
         
-        StopManualRecording();
+        // 4단계: 녹화 중단
+        StopRecording();
+        
         autoRecordingCompleted = true;
+        Debug.Log("✅ Auto recording sequence completed.");
     }
 
-    // --- 수동 녹화 제어 ---
-    public void StartManualRecording()
+    private void StartRecording()
     {
         if (isRecording)
         {
             Debug.LogWarning("Already recording.");
             return;
         }
+        
         if (!isReady)
         {
             Debug.LogError("Cannot start recording: FFmpeg is not ready.");
@@ -92,13 +91,13 @@ public class FFmpegController : MonoBehaviour
         }
         
         #if UNITY_WEBGL && !UNITY_EDITOR
-            Debug.Log($"Calling startRecording with {videoWidth}x{videoHeight} @ {frameRate}fps");
+            Debug.Log($"Starting auto recording with {videoWidth}x{videoHeight} @ {frameRate}fps");
             startRecording(videoWidth, videoHeight, frameRate);
             isRecording = true;
         #endif
     }
 
-    public void StopManualRecording()
+    private void StopRecording()
     {
         if (!isRecording)
         {
@@ -107,7 +106,7 @@ public class FFmpegController : MonoBehaviour
         }
         
         #if UNITY_WEBGL && !UNITY_EDITOR
-            Debug.Log("Calling stopRecording...");
+            Debug.Log("Stopping auto recording...");
             stopRecording();
             isRecording = false;
         #endif
@@ -116,6 +115,6 @@ public class FFmpegController : MonoBehaviour
     // JSLib에서 변환 완료 후 호출될 함수
     public void OnEncodeComplete(string result)
     {
-        Debug.Log($">>> Encode Complete: {result}");
+        Debug.Log($">>> Auto Recording Complete: {result}");
     }
 }

@@ -883,12 +883,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8fa738d02857b584982386b9e69017ad, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  enableAutoRecording: 1
-  autoRecordingDuration: 2
+  autoRecordingDuration: 10
   recordingStartDelay: 1
   videoWidth: 1280
   videoHeight: 720
-  frameRate: 30
+  frameRate: 15
 --- !u!4 &877696875
 Transform:
   m_ObjectHideFlags: 0

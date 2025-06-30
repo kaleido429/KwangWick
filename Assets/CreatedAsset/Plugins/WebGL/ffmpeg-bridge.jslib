@@ -2,95 +2,97 @@
 mergeInto(LibraryManager.library, {
 
     InitFFmpeg: async function() {
-        console.log("=== FFmpeg Initialization Called from C# (Class-based Final) ===");
-        
-        // 1. Script 태그를 동적으로 생성하여 ffmpeg.js 로드
-        if (typeof window.FFmpegWASM === 'undefined') {
-            const script = document.createElement('script');
-            script.src = new URL('StreamingAssets/ffmpeg.js', document.baseURI).href;
-            document.head.appendChild(script);
-
-            // 로드가 완료될 때까지 대기
-            await new Promise((resolve, reject) => {
-                script.onload = resolve;
-                script.onerror = reject;
-            });
-            console.log("✅ ffmpeg.js script loaded.");
-        }
-        
         try {
-            // 2. FFmpegWASM 객체와 그 안의 FFmpeg 클래스가 준비될 때까지 대기
-            let timer = 0;
-            const timeout = 5000;
-            while (!window.FFmpegWASM || !window.FFmpegWASM.FFmpeg) {
-                if (timer > timeout) throw new Error("Timeout waiting for FFmpegWASM.FFmpeg class.");
-                await new Promise(resolve => setTimeout(resolve, 100));
-                timer += 100;
-            }
-
-            console.log("✅ FFmpegWASM.FFmpeg class is ready.");
+            console.log("=== FFmpeg Initialization (No Worker Mode) ===");
             
-            // 3. 올바른 API 사용: new FFmpeg()로 인스턴스 생성
-            const { FFmpeg } = window.FFmpegWASM;
-            window.ffmpeg = new FFmpeg();
-
-            // FFmpeg 내부 로그를 브라우저 콘솔에 출력하도록 로거 추가
-            window.ffmpeg.on('log', ({ type, message }) => {
-                console.log(`[FFmpeg log] ${type}: ${message}`);
+            if (typeof window.FFmpeg === 'undefined') {
+                const script = document.createElement('script');
+                script.src = "https://unpkg.com/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js";
+                document.head.appendChild(script);
+                
+                await new Promise((resolve, reject) => {
+                    script.onload = resolve;
+                    script.onerror = reject;
+                });
+                console.log("✅ FFmpeg script loaded from CDN.");
+            }
+            
+            // [CHANGED] Worker를 완전히 사용하지 않는 방식
+            const { createFFmpeg } = window.FFmpeg;
+            window.ffmpeg = createFFmpeg({
+                log: true,
+                corePath: 'https://unpkg.com/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js',
+                // [REMOVED] wasmPath와 workerPath 완전 제거 (자동 감지하게 함)
+                // [CHANGED] mainThread에서만 실행
+                mainThread: true
             });
 
-            // 4. 생성된 인스턴스의 load() 메소드를 호출하여 코어 파일 로드
-            const coreURL = new URL('StreamingAssets/ffmpeg-core.js', document.baseURI).href;
-            await window.ffmpeg.load({ coreURL });
+            console.log("🔄 Loading FFmpeg core...");
+            await window.ffmpeg.load();
             
-            console.log("✅ FFmpeg MT core loaded and instance created successfully!");
-            SendMessage('FFmpegController', 'OnFFmpegReady', 'SUCCESS_CLASS_API');
+            console.log("✅ FFmpeg loaded successfully (Main Thread Only)!");
+            SendMessage('FFmpegController', 'OnFFmpegReady', 'SUCCESS_MAIN_THREAD');
 
         } catch (error) {
             console.error("❌ FFmpeg initialization failed:", error);
-            SendMessage('FFmpegController', 'OnFFmpegFailed', error.message || 'Unknown final error');
+            SendMessage('FFmpegController', 'OnFFmpegFailed', error.message);
         }
     },
 
-    // startRecording과 stopRecording 함수는 수정할 필요 없습니다.
     startRecording: function(width, height, framerate) {
         try {
-            if (!window.ffmpeg || !window.ffmpeg.loaded) { return; } // isLoaded() -> loaded
-            const canvas = document.getElementById('unity-canvas');
-            if (!canvas) { return; }
+            if (!window.ffmpeg || !window.ffmpeg.isLoaded()) {
+                console.error("FFmpeg not ready");
+                return;
+            }
             
-            console.log(`🎬 [FFmpeg-MT Mode] Starting recording... (${width}x${height} @ ${framerate}fps)`);
+            const canvas = document.getElementById('unity-canvas');
+            if (!canvas) return;
+            
+            console.log(`🎬 Starting recording... (${width}x${height} @ ${framerate}fps)`);
             window.recordingStartTime = new Date();
-            // C#에서 전달받은 framerate 사용
-            const stream = canvas.captureStream(framerate); 
+            
+            const stream = canvas.captureStream(framerate);
             window.tempRecorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp8' });
             window.tempChunks = [];
+
             window.tempRecorder.ondataavailable = (event) => {
                 if (event.data.size > 0) window.tempChunks.push(event.data);
             };
             
             window.tempRecorder.onstop = async () => {
-                console.log("⏹️ [FFmpeg-MT Mode] Recording stopped. Processing in background...");
+                console.log("⏹️ Recording stopped. Processing...");
+                
                 try {
-                    if (!window.tempChunks || window.tempChunks.length === 0) throw new Error("No data.");
+                    if (!window.tempChunks || window.tempChunks.length === 0) {
+                        throw new Error("No data recorded.");
+                    }
+                    
+                    const totalSize = window.tempChunks.reduce((sum, chunk) => sum + chunk.size, 0);
+                    console.log(`📊 Recorded data: ${(totalSize/1024/1024).toFixed(2)} MB`);
                     
                     const inputBlob = new Blob(window.tempChunks, { type: 'video/webm' });
                     const inputData = new Uint8Array(await inputBlob.arrayBuffer());
-                    await window.ffmpeg.writeFile('input.webm', inputData);
+                    
+                    window.ffmpeg.FS('writeFile', 'input.webm', inputData);
 
                     const startTime = window.recordingStartTime || new Date();
-                    const outputFileName = `rec-mt_${startTime.getFullYear()}.mp4`;
+                    const outputFileName = `KwangWick-${startTime.getTime()}.mp4`;
                     
-                    console.log(`📝 Starting MT conversion: ${outputFileName}`);
+                    console.log(`📝 Converting to ${outputFileName}...`);
                     
-                    // 가장 기본적인 옵션으로 h264 코덱 변환을 다시 시도합니다.
-                    await window.ffmpeg.exec([
+                    // [FIXED] 홀수 해상도 문제 해결
+                    await window.ffmpeg.run(
                         '-i', 'input.webm',
-                        // '-c:v', 'copy', // copy 옵션 제거
+                        '-c:v', 'libx264',                           // 명시적 코덱 지정
+                        '-preset', 'ultrafast',                      // 빠른 처리
+                        '-crf', '35',                               // 더 높은 압축률
+                        '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2', // 홀수 해상도를 짝수로 변환
+                        '-an',                                      // 오디오 제거
                         outputFileName
-                    ]);
+                    );
                     
-                    const outputData = await window.ffmpeg.readFile(outputFileName);
+                    const outputData = window.ffmpeg.FS('readFile', outputFileName);
                     if (outputData.length === 0) throw new Error("Conversion failed.");
                     
                     const outputBlob = new Blob([outputData.buffer], { type: 'video/mp4' });
@@ -98,20 +100,30 @@ mergeInto(LibraryManager.library, {
                     const a = document.createElement('a');
                     a.href = url;
                     a.download = outputFileName;
+                    a.style.display = 'none';
                     document.body.appendChild(a);
                     a.click();
                     document.body.removeChild(a);
                     window.URL.revokeObjectURL(url);
                     
-                    console.log("🎉 MT Video converted and saved:", outputFileName);
+                    console.log("🎉 Video saved:", outputFileName);
                     SendMessage('FFmpegController', 'OnEncodeComplete', 'SUCCESS: ' + outputFileName);
                     
+                    // 메모리 정리
+                    window.ffmpeg.FS('unlink', 'input.webm');
+                    window.ffmpeg.FS('unlink', outputFileName);
+                    
                 } catch (error) {
+                    console.error("❌ Conversion failed:", error);
                     SendMessage('FFmpegController', 'OnEncodeComplete', 'FAIL: ' + error.message);
                 }
             };
+
             window.tempRecorder.start();
-        } catch (error) { console.error("❌ Error starting MT recording:", error); }
+
+        } catch (error) { 
+            console.error("❌ Recording error:", error); 
+        }
     },
     
     stopRecording: function() {

@@ -18,6 +18,7 @@ public class PlayerInput : MonoBehaviour
     [field: SerializeField] Gun Gun { get; set; }
     [field: SerializeField] PlayerUIManager PlayerUIManager { get; set; }
     [field: SerializeField] PlayerVFXManager PlayerVFXManager { get; set; }
+    [field: SerializeField, Header("Controls")] public bool IsInputEnabled { get; set; } = false;
 
     #endregion
 
@@ -26,12 +27,14 @@ public class PlayerInput : MonoBehaviour
     // 마우스 이동을 처리합니다.
     public void OnLook(InputValue value)
     {
+        if (IsInputEnabled == false) return;
         CameraController.LookInput = value.Get<Vector2>();
     }
 
     // 마우스 왼쪽 클릭을 처리합니다.
     public void OnAttack()
     {
+        if (IsInputEnabled == false) return;
         Animator.SetTrigger("Fire");
         SoundManager.GunFire();
         CameraController.ApplyRecoil();
@@ -43,19 +46,34 @@ public class PlayerInput : MonoBehaviour
 
             // HitType에 따라 UI를 토글합니다.
             PlayerUIManager.ToggleHitUI(hitType);
+
+            // 히트 기록을 추가합니다.
+            if (hitType > 0) ScoreManager.Instance.AddHit();
+            if(hitType == (int)HitType.Head) ScoreManager.Instance.AddHeadshot();
         }
+
+        // 총알 발사 기록을 추가합니다.
+        ScoreManager.Instance.AddShot();
     }
 
     // Q 키를 처리합니다.
     public void OnLeanLeft(InputValue value)
     {
+        if (IsInputEnabled == false) return;
         CameraController.LeanLeftToggle = value.Get<float>();
     }
 
     // E 키를 처리합니다.
     public void OnLeanRight(InputValue value)
     {
+        if (IsInputEnabled == false) return;
         CameraController.LeanRightToggle = value.Get<float>();
+    }
+
+    // 입력 활성화 상태를 설정합니다.
+    public void SetInputActive(bool active)
+    {
+        IsInputEnabled = active;
     }
 
     #endregion

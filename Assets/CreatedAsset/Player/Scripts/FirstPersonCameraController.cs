@@ -4,13 +4,13 @@ using UnityEngine;
 public class FirstPersonCameraController : MonoBehaviour
 {
     /*
-     * [ÀÏÀÎÄª Ä«¸Ş¶ó¿Í °ü·ÃµÈ ±â´ÉÀ» ±¸ÇöÇÏ´Â ½ºÅ©¸³Æ®ÀÔ´Ï´Ù.]
-     * È¸Àü, ±â¿ïÀÌ±â, ¹İµ¿ µîÀ» Ã³¸®ÇÕ´Ï´Ù.
+     * [ì¼ì¸ì¹­ ì¹´ë©”ë¼ì™€ ê´€ë ¨ëœ ê¸°ëŠ¥ì„ êµ¬í˜„í•˜ëŠ” ìŠ¤í¬ë¦½íŠ¸ì…ë‹ˆë‹¤.]
+     * íšŒì „, ê¸°ìš¸ì´ê¸°, ë°˜ë™ ë“±ì„ ì²˜ë¦¬í•©ë‹ˆë‹¤.
      */
 
     #region Variables
 
-    [Tooltip("Ä«¸Ş¶ó ¼³Á¤")]
+    [Tooltip("ì¹´ë©”ë¼ ì„¤ì •")]
     [field: SerializeField, Header("Camera Settings")] public float CameraSensitivity { get; set; } = 50f;
     [field: SerializeField] public Vector3 CameraOffset { get; set; } = new Vector3(0f, 1.63f, 0f);
     [field: SerializeField] public Quaternion CameraRotation { get; set; } = new Quaternion(0f, 0f, 0f, 1f);
@@ -22,7 +22,7 @@ public class FirstPersonCameraController : MonoBehaviour
     [field: SerializeField] public bool InvertX { get; set; } = false;
     [field: SerializeField] public bool InvertY { get; set; } = false;
 
-    [Tooltip("Ä«¸Ş¶ó È¿°ú")]
+    [Tooltip("ì¹´ë©”ë¼ íš¨ê³¼")]
     [field: SerializeField, Header("Camera Effects")] public float MaxLeanAngle { get; set; } = 8f;
     [field: SerializeField] public float LeanSpeed { get; set; } = 10f;
     [field: SerializeField] public float LeanOffset { get; set; } = 0.5f;
@@ -33,7 +33,7 @@ public class FirstPersonCameraController : MonoBehaviour
     [field: SerializeField] public Vector3 RecoilAmount { get; set; } = new(8f, 0.01f, 0f);
     [field: SerializeField] public bool UseCameraRecoil { get; set; } = true;
 
-    [Tooltip("µğ¹ö±×: Ä«¸Ş¶ó °è»ê °á°ú")]
+    [Tooltip("ë””ë²„ê·¸: ì¹´ë©”ë¼ ê³„ì‚° ê²°ê³¼")]
     [field: SerializeField, Header("Camera Result")] public Vector3 ResultLeanPosition { get; set; } = Vector3.zero;
     [field: SerializeField] public Vector3 ResultLeanRotation { get; set; } = Vector3.zero;
     [field: SerializeField] public float CurrentPitchAngle { get; set; } = 0f;
@@ -41,14 +41,14 @@ public class FirstPersonCameraController : MonoBehaviour
     [field: SerializeField] public Vector3 ResultRecoilRotation { get; set; } = Vector3.zero;
     [field: SerializeField] public Vector3 CurrentRecoil { get; set; } = Vector3.zero;
 
-    [Tooltip("µğ¹ö±×: ÇÃ·¹ÀÌ¾î ÀÔ·Â")]
+    [Tooltip("ë””ë²„ê·¸: í”Œë ˆì´ì–´ ì…ë ¥")]
     [field: SerializeField, Header("Player Input")] public Vector2 LookInput { get; set; } = Vector2.zero;
     [field: SerializeField] public float LeanLeft { get; set; } = 0f;
     public float LeanLeftToggle { get => LeanLeft; set { if (ToggleLean && value != 0f) LeanLeft = Mathf.Abs(LeanLeft - value); else if (!ToggleLean) LeanLeft = value; } }
     [field: SerializeField] public float LeanRight { get; set; } = 0f;
     public float LeanRightToggle { get => LeanRight; set { if (ToggleLean && value != 0f) LeanRight = Mathf.Abs(LeanRight - value); else if (!ToggleLean) LeanRight = value; } }
 
-    [Tooltip("ÄÄÆ÷³ÍÆ®")]
+    [Tooltip("ì»´í¬ë„ŒíŠ¸")]
     [field: SerializeField, Header("Components")] Camera PlayerCamera { get; set; }
     [field: SerializeField] CharacterController CharacterController { get; set; }
     [field: SerializeField] CameraManager CameraManager { get; set; }
@@ -58,64 +58,64 @@ public class FirstPersonCameraController : MonoBehaviour
 
     #region Camera Methods
 
-    // Ä«¸Ş¶ó ¼³Á¤À» ¾÷µ¥ÀÌÆ®ÇÕ´Ï´Ù.
+    // ì¹´ë©”ë¼ ì„¤ì •ì„ ì—…ë°ì´íŠ¸í•©ë‹ˆë‹¤.
     private void CameraSettingsUpdate()
     {
-        // FOV ¼³Á¤À» ¾÷µ¥ÀÌÆ®ÇÕ´Ï´Ù.
+        // FOV ì„¤ì •ì„ ì—…ë°ì´íŠ¸í•©ë‹ˆë‹¤.
         PlayerCamera.fieldOfView = Mathf.Lerp(PlayerCamera.fieldOfView, CameraFOV, Time.deltaTime);
     }
 
-    // Ä«¸Ş¶ó ±â¿ïÀÌ±â¸¦ ¾÷µ¥ÀÌÆ®ÇÕ´Ï´Ù.
+    // ì¹´ë©”ë¼ ê¸°ìš¸ì´ê¸°ë¥¼ ì—…ë°ì´íŠ¸í•©ë‹ˆë‹¤.
     private void LeanUpdate()
     {
         if (!UseLean) return;
 
-        // ±â¿ïÀÌ±â ÀÔ·ÂÀÌ µ¿½Ã¿¡ µé¾î¿Ã °æ¿ì µÑ ´Ù 0À¸·Î ¼³Á¤ÇÕ´Ï´Ù.
+        // ê¸°ìš¸ì´ê¸° ì…ë ¥ì´ ë™ì‹œì— ë“¤ì–´ì˜¬ ê²½ìš° ë‘˜ ë‹¤ 0ìœ¼ë¡œ ì„¤ì •í•©ë‹ˆë‹¤.
         if (LeanLeft != 0f && LeanRight != 0f)
         {
             LeanLeft = 0f;
             LeanRight = 0f;
         }
 
-        // ±â¿ïÀÌ±â ÀÔ·Â¿¡ µû¶ó Ä«¸Ş¶ó È¸Àü °¢µµ¿Í À§Ä¡ ¿ÀÇÁ¼ÂÀ» °è»êÇÕ´Ï´Ù.
+        // ê¸°ìš¸ì´ê¸° ì…ë ¥ì— ë”°ë¼ ì¹´ë©”ë¼ íšŒì „ ê°ë„ì™€ ìœ„ì¹˜ ì˜¤í”„ì…‹ì„ ê³„ì‚°í•©ë‹ˆë‹¤.
         float rotationAngle = (LeanLeft + (-1f * LeanRight)) * MaxLeanAngle;
         Vector3 positionOffset = ((-1f * LeanLeft) + LeanRight) * new Vector3(LeanOffset, 0f, 0f);
 
-        // ±â¿ïÀÌ±â °¢µµ¿Í À§Ä¡¸¦ º¸°£ÇÏ¿© ºÎµå·´°Ô ÀüÈ¯ÇÕ´Ï´Ù.
+        // ê¸°ìš¸ì´ê¸° ê°ë„ì™€ ìœ„ì¹˜ë¥¼ ë³´ê°„í•˜ì—¬ ë¶€ë“œëŸ½ê²Œ ì „í™˜í•©ë‹ˆë‹¤.
         CurrentLeanAngle = Mathf.Lerp(CurrentLeanAngle, rotationAngle, Time.deltaTime * LeanSpeed);
         ResultLeanPosition = Vector3.Lerp(ResultLeanPosition, positionOffset, Time.deltaTime * LeanSpeed);
         ResultLeanRotation = new Vector3(0f, 0f, CurrentLeanAngle);
     }
 
-    // Ä«¸Ş¶ó È¸ÀüÀ» ¾÷µ¥ÀÌÆ®ÇÕ´Ï´Ù.
+    // ì¹´ë©”ë¼ íšŒì „ì„ ì—…ë°ì´íŠ¸í•©ë‹ˆë‹¤.
     private void LookUpdate()
     {
-        // Ä«¸Ş¶ó È¸Àü ÀÔ·ÂÀ» °¡Á®¿Í¼­ È¸Àü °¢µµ¸¦ °è»êÇÕ´Ï´Ù.
+        // ì¹´ë©”ë¼ íšŒì „ ì…ë ¥ì„ ê°€ì ¸ì™€ì„œ íšŒì „ ê°ë„ë¥¼ ê³„ì‚°í•©ë‹ˆë‹¤.
         Vector2 lookInput = CameraSensitivity * MouseSettings.sensitivity * Time.deltaTime * new Vector2(LookInput.x, LookInput.y);
         CurrentPitch -= lookInput.y * (InvertY ? -1f : 1f);
 
-        // X¹æÇâ È¸ÀüÀº ÇÃ·¹ÀÌ¾î ÀüÃ¼°¡ È¸ÀüÇÏ°í Y¹æÇâ È¸ÀüÀº Ä«¸Ş¶ó¸¸ È¸ÀüÇÏµµ·Ï ¼³Á¤ÇÕ´Ï´Ù.
+        // Xë°©í–¥ íšŒì „ì€ í”Œë ˆì´ì–´ ì „ì²´ê°€ íšŒì „í•˜ê³  Yë°©í–¥ íšŒì „ì€ ì¹´ë©”ë¼ë§Œ íšŒì „í•˜ë„ë¡ ì„¤ì •í•©ë‹ˆë‹¤.
         transform.Rotate((InvertX ? -1f : 1f) * lookInput.x * Vector3.up);
         CameraManager.transform.localRotation = Quaternion.Euler(CurrentPitch, 0f, 0f);
-        // ±â¿ïÀÌ±â ¹× ¹İµ¿À» Àû¿ëÇÕ´Ï´Ù.
+        // ê¸°ìš¸ì´ê¸° ë° ë°˜ë™ì„ ì ìš©í•©ë‹ˆë‹¤.
         transform.localRotation *= Quaternion.Euler(0f, ResultRecoilRotation.y, 0f);
         CameraManager.transform.localRotation *= Quaternion.Euler(ResultLeanRotation + new Vector3(ResultRecoilRotation.x, 0f, ResultRecoilRotation.z));
         CameraManager.transform.localPosition = CameraOffset + ResultLeanPosition;
     }
 
-    // Ä«¸Ş¶ó ¹İµ¿ °¨¼Ò¸¦ Àû¿ëÇÕ´Ï´Ù.
+    // ì¹´ë©”ë¼ ë°˜ë™ ê°ì†Œë¥¼ ì ìš©í•©ë‹ˆë‹¤.
     private void ApplyRecoilDamping()
     {
         CurrentRecoil = Vector3.Lerp(CurrentRecoil, Vector3.zero, Time.deltaTime * RecoilReturnSpeed);
         ResultRecoilRotation = Vector3.Slerp(ResultRecoilRotation, CurrentRecoil, Time.fixedDeltaTime * RecoilDampTime);
     }
 
-    // Ä«¸Ş¶ó ¹İµ¿À» Àû¿ëÇÕ´Ï´Ù.
+    // ì¹´ë©”ë¼ ë°˜ë™ì„ ì ìš©í•©ë‹ˆë‹¤.
     public void ApplyRecoil()
     {
         if (!UseCameraRecoil) return;
 
-        // ¹İµ¿Àº ÀÓÀÇ·Î X, Y, ZÃà¿¡ Àû¿ëµË´Ï´Ù.
+        // ë°˜ë™ì€ ì„ì˜ë¡œ X, Y, Zì¶•ì— ì ìš©ë©ë‹ˆë‹¤.
         float recoilX = -1f * RecoilAmount.x;
         float recoilY = Random.Range(-RecoilAmount.y, RecoilAmount.y);
         float recoilZ = Random.Range(-RecoilAmount.z, RecoilAmount.z);
@@ -146,14 +146,14 @@ public class FirstPersonCameraController : MonoBehaviour
             MeshManager = GetComponentInChildren<MeshManager>();
         }
 
-        // ¸¶¿ì½º Ä¿¼­ Àá±İ ¼³Á¤
+        // ë§ˆìš°ìŠ¤ ì»¤ì„œ ì ê¸ˆ ì„¤ì •
         if (LockCursor)
         {
             Cursor.visible = false;
             Cursor.lockState = CursorLockMode.Locked;
         }
 
-        // Ä«¸Ş¶ó ÃÊ±â ¼³Á¤
+        // ì¹´ë©”ë¼ ì´ˆê¸° ì„¤ì •
         PlayerCamera.fieldOfView = CameraFOV;
 
         CameraManager.transform.localPosition = CameraOffset;
@@ -187,11 +187,11 @@ public class FirstPersonCameraController : MonoBehaviour
 
     public void Update()
     {
-        // Ä«¸Ş¶ó ¼³Á¤ ¾÷µ¥ÀÌÆ®
+        // ì¹´ë©”ë¼ ì„¤ì • ì—…ë°ì´íŠ¸
         CameraSettingsUpdate();
-        // Ä«¸Ş¶ó ±â¿ïÀÌ±â
+        // ì¹´ë©”ë¼ ê¸°ìš¸ì´ê¸°
         LeanUpdate();
-        // Ä«¸Ş¶ó ¾÷µ¥ÀÌÆ®
+        // ì¹´ë©”ë¼ ì—…ë°ì´íŠ¸
         LookUpdate();
     }
 

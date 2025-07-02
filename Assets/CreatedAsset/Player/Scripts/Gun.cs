@@ -24,17 +24,26 @@ public class Gun : MonoBehaviour
 	}
 
     public int Shoot()
-	{
-    	Ray ray = new Ray(cameraTransform.position, cameraTransform.forward);
-   		if (Physics.Raycast(ray, out RaycastHit hit, 100f))
-	    {
-        	var target = hit.collider.GetComponentInParent<Target>();
-        	if (target != null)
-        	{
+    {
+        Ray ray = new Ray(cameraTransform.position, cameraTransform.forward);
+
+        if (Physics.Raycast(ray, out RaycastHit hit, 100f))
+        {
+            // 1. 먼저 벽인지 확인
+            if (hit.collider.CompareTag("Wall"))
+            {
+                Debug.Log("벽에 먼저 부딪힘.");
+                return (int)HitType.None;
+            }
+
+            // 2. 타겟 판정
+            var target = hit.collider.GetComponentInParent<Target>();
+            if (target != null)
+            {
                 int damage = hit.collider.CompareTag("Head") ? headDamage : bodyDamage;
                 bool killed = target.Hit(damage);
 
-                if(damage == 3)
+                if (damage == 3)
                 {
                     return (int)HitType.Head;
                 }
@@ -47,7 +56,9 @@ public class Gun : MonoBehaviour
                     return (int)HitType.Body;
                 }
             }
-    	}
+        }
+
         return (int)HitType.None;
     }
+
 }

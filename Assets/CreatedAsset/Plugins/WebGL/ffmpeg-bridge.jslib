@@ -33,6 +33,53 @@ mergeInto(LibraryManager.library, {
             console.log("✅ FFmpeg loaded successfully (Main Thread Only)!");
             SendMessage('FFmpegController', 'OnFFmpegReady', 'SUCCESS_MAIN_THREAD');
 
+            // === Firebase 초기화 시작 ===
+            try {
+                if (typeof window.firebase === 'undefined') {
+                    console.log("📥 Loading Firebase Compatibility SDKs...");
+                    const firebaseScripts = [
+                        "https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js",
+                        "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js",
+                        "https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js"
+                    ];
+
+                    for (const src of firebaseScripts) {
+                        const script = document.createElement('script');
+                        script.src = src;
+                        document.head.appendChild(script);
+                        await new Promise((resolve, reject) => {
+                            script.onload = resolve;
+                            script.onerror = reject;
+                        });
+                    }
+                    console.log("✅ Firebase SDKs loaded.");
+
+                    const firebaseConfig = {
+                        apiKey: "AIzaSyAGJ38XdodPCcUfpowFODuRx4pKotrbCS0",
+                        authDomain: "fairplayfairy-3e2eb.firebaseapp.com",
+                        projectId: "fairplayfairy-3e2eb",
+                        storageBucket: "fairplayfairy-3e2eb.firebasestorage.app",
+                        messagingSenderId: "650162719276",
+                        appId: "1:650162719276:web:90442b070eb8a72e385f89",
+                        measurementId: "G-GD8XLV1XDG"
+                    };
+
+                    if (!window.firebase.apps.length) {
+                        window.firebase.initializeApp(firebaseConfig);
+                        console.log("✅ Firebase Initialized.");
+                    }
+
+                    await window.firebase.auth().signInAnonymously();
+                    console.log("✅ Firebase signed in anonymously.");
+
+                } else {
+                    console.log("✅ Firebase already initialized.");
+                }
+            } catch (error) {
+                console.error("❌ Firebase initialization failed:", error);
+            }
+            // === Firebase 초기화 끝 ===
+
         } catch (error) {
             console.error("❌ FFmpeg initialization failed:", error);
             SendMessage('FFmpegController', 'OnFFmpegFailed', error.message);
@@ -96,17 +143,41 @@ mergeInto(LibraryManager.library, {
                     if (outputData.length === 0) throw new Error("Conversion failed.");
                     
                     const outputBlob = new Blob([outputData.buffer], { type: 'video/mp4' });
-                    const url = window.URL.createObjectURL(outputBlob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = outputFileName;
-                    a.style.display = 'none';
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    window.URL.revokeObjectURL(url);
-                    
-                    console.log("🎉 Video saved:", outputFileName);
+
+                    //firebase에 업로드
+                    try {
+                        if (window.firebase && window.firebase.storage) {
+                            console.log(`☁️ Uploading ${outputFileName} to Firebase Storage...`);
+                            const storageRef = window.firebase.storage().ref();
+                            const videoRef = storageRef.child('videos/' + outputFileName);
+                            
+                            const snapshot = await videoRef.put(outputBlob);
+                            const downloadURL = await snapshot.ref.getDownloadURL();
+                            
+                            console.log('✅ Firebase Upload Success! URL:', downloadURL);
+                            SendMessage('FFmpegController', 'OnUploadComplete', 'SUCCESS: ' + downloadURL);
+                        } else {
+                            throw new Error("Firebase Storage is not initialized.");
+                        }
+                    } catch (error) {
+                        console.error("❌ Firebase upload failed:", error);
+                        SendMessage('FFmpegController', 'OnUploadComplete', 'FAIL: ' + error.message);
+
+                        // 업로드 실패 시 로컬로 저장 (Fallback)
+                        console.log("...업로드 실패. 로컬 다운로드를 시작합니다.");
+                        const url = window.URL.createObjectURL(outputBlob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = outputFileName;
+                        a.style.display = 'none';
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        window.URL.revokeObjectURL(url);
+                        console.log("🎉 Video saved locally as fallback:", outputFileName);
+                    }
+            
+                    // 인코딩 및 후처리 작업이 완료되었음을 알립니다.
                     SendMessage('FFmpegController', 'OnEncodeComplete', 'SUCCESS: ' + outputFileName);
                     
                     // 메모리 정리

@@ -1200,7 +1200,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   autoRecordingDuration: 10
-  recordingStartDelay: 1
+  recordingStartDelay: 3
   videoWidth: 1280
   videoHeight: 720
   frameRate: 15

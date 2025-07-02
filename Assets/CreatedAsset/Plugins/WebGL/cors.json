@@ -1,0 +1,11 @@
+[
+  {
+    "origin": [
+      "http://localhost:1359",
+      "https://fairplayfairy-3e2eb.web.app" 
+    ],
+    "method": ["GET", "POST", "PUT", "HEAD"],
+    "responseHeader": ["Content-Type", "Authorization"],
+    "maxAgeSeconds": 3600
+  }
+]

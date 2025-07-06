@@ -49,7 +49,7 @@ public class Target : MonoBehaviour
     {
         Debug.Log(transform.position.x);
 
-        if (transform.position.x > -12f)
+        if (transform.position.x > 42)
         {
             Debug.Log("left"); //x좌표 증가
             animator.SetBool("right", false);

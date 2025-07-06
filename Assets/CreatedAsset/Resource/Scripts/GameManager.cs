@@ -20,6 +20,7 @@ public class GameManager : MonoBehaviour
     [SerializeField] private TMP_Text finalScoreText;
     [SerializeField] private TMP_Text accuracyText;
     [SerializeField] private TMP_Text headshotsText;
+    [SerializeField] private FFmpegController ffmpegController;
     private float sec;
     private int min;
 
@@ -121,6 +122,8 @@ public class GameManager : MonoBehaviour
         finalScoreText.text = $"Final Score: {finalScore}";
         accuracyText.text = $"Accuracy: {totalHits}/{totalShots} ({accuracy:F2}%)";
         headshotsText.text = $"Headshots: {totalHeadshots}";
+        ffmpegController.upload(finalScore, totalShots, totalHits, System.Math.Round(accuracy, 2), totalHeadshots);
+
     }
 
 }

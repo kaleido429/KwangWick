@@ -1,6 +1,9 @@
 // C# 스크립트와 직접 통신하는 함수들의 라이브러리
 mergeInto(LibraryManager.library, {
 
+    // [NEW] 변환된 비디오 데이터를 임시 저장할 전역 변수
+    $convertedVideoBlob: null,
+
     InitFFmpeg: async function() {
         try {
             console.log("=== FFmpeg Initialization (No Worker Mode) ===");
@@ -17,13 +20,10 @@ mergeInto(LibraryManager.library, {
                 console.log("✅ FFmpeg script loaded from CDN.");
             }
             
-            // [CHANGED] Worker를 완전히 사용하지 않는 방식
             const { createFFmpeg } = window.FFmpeg;
             window.ffmpeg = createFFmpeg({
                 log: true,
                 corePath: 'https://unpkg.com/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js',
-                // [REMOVED] wasmPath와 workerPath 완전 제거 (자동 감지하게 함)
-                // [CHANGED] mainThread에서만 실행
                 mainThread: true
             });
 
@@ -97,7 +97,6 @@ mergeInto(LibraryManager.library, {
             if (!canvas) return;
             
             console.log(`🎬 Starting recording... (${width}x${height} @ ${framerate}fps)`);
-            window.recordingStartTime = new Date();
             
             const stream = canvas.captureStream(framerate);
             window.tempRecorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp8' });
@@ -107,6 +106,7 @@ mergeInto(LibraryManager.library, {
                 if (event.data.size > 0) window.tempChunks.push(event.data);
             };
             
+            // [REFACTORED] onstop 이벤트 핸들러: 변환 후 임시 저장까지만 수행
             window.tempRecorder.onstop = async () => {
                 console.log("⏹️ Recording stopped. Processing...");
                 
@@ -115,74 +115,36 @@ mergeInto(LibraryManager.library, {
                         throw new Error("No data recorded.");
                     }
                     
-                    const totalSize = window.tempChunks.reduce((sum, chunk) => sum + chunk.size, 0);
-                    console.log(`📊 Recorded data: ${(totalSize/1024/1024).toFixed(2)} MB`);
-                    
                     const inputBlob = new Blob(window.tempChunks, { type: 'video/webm' });
                     const inputData = new Uint8Array(await inputBlob.arrayBuffer());
                     
                     window.ffmpeg.FS('writeFile', 'input.webm', inputData);
-
-                    const startTime = window.recordingStartTime || new Date();
-                    const outputFileName = `KwangWick-${startTime.getTime()}.mp4`;
                     
-                    console.log(`📝 Converting to ${outputFileName}...`);
+                    console.log(`📝 Converting to MP4...`);
                     
-                    // [FIXED] 홀수 해상도 문제 해결
                     await window.ffmpeg.run(
                         '-i', 'input.webm',
-                        '-c:v', 'libx264',                           // 명시적 코덱 지정
-                        '-preset', 'ultrafast',                      // 빠른 처리
-                        '-crf', '35',                               // 더 높은 압축률
-                        '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2', // 홀수 해상도를 짝수로 변환
-                        '-an',                                      // 오디오 제거
-                        outputFileName
+                        '-c:v', 'libx264',
+                        '-preset', 'ultrafast',
+                        '-crf', '35',
+                        '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2',
+                        '-an',
+                        'output.mp4' // 임시 파일명 사용
                     );
                     
-                    const outputData = window.ffmpeg.FS('readFile', outputFileName);
+                    const outputData = window.ffmpeg.FS('readFile', 'output.mp4');
                     if (outputData.length === 0) throw new Error("Conversion failed.");
                     
-                    const outputBlob = new Blob([outputData.buffer], { type: 'video/mp4' });
+                    // [CHANGED] 변환된 비디오 데이터를 전역 변수에 저장
+                    window.convertedVideoBlob = new Blob([outputData.buffer], { type: 'video/mp4' });
+                    console.log("✅ Video converted and ready for upload.");
 
-                    //firebase에 업로드
-                    try {
-                        if (window.firebase && window.firebase.storage) {
-                            console.log(`☁️ Uploading ${outputFileName} to Firebase Storage...`);
-                            const storageRef = window.firebase.storage().ref();
-                            const videoRef = storageRef.child('videos/' + outputFileName);
-                            
-                            const snapshot = await videoRef.put(outputBlob);
-                            const downloadURL = await snapshot.ref.getDownloadURL();
-                            
-                            console.log('✅ Firebase Upload Success! URL:', downloadURL);
-                            SendMessage('FFmpegController', 'OnUploadComplete', 'SUCCESS: ' + downloadURL);
-                        } else {
-                            throw new Error("Firebase Storage is not initialized.");
-                        }
-                    } catch (error) {
-                        console.error("❌ Firebase upload failed:", error);
-                        SendMessage('FFmpegController', 'OnUploadComplete', 'FAIL: ' + error.message);
-
-                        // 업로드 실패 시 로컬로 저장 (Fallback)
-                        console.log("...업로드 실패. 로컬 다운로드를 시작합니다.");
-                        const url = window.URL.createObjectURL(outputBlob);
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = outputFileName;
-                        a.style.display = 'none';
-                        document.body.appendChild(a);
-                        a.click();
-                        document.body.removeChild(a);
-                        window.URL.revokeObjectURL(url);
-                        console.log("🎉 Video saved locally as fallback:", outputFileName);
-                    }
-            
-                    // 인코딩 및 후처리 작업이 완료되었음을 알립니다.
-                    SendMessage('FFmpegController', 'OnEncodeComplete', 'SUCCESS: ' + outputFileName);
+                    // C#으로 변환 완료를 알림
+                    SendMessage('FFmpegController', 'OnEncodeComplete', 'SUCCESS');
                     
                     // 메모리 정리
                     window.ffmpeg.FS('unlink', 'input.webm');
-                    window.ffmpeg.FS('unlink', outputFileName);
+                    window.ffmpeg.FS('unlink', 'output.mp4');
                     
                 } catch (error) {
                     console.error("❌ Conversion failed:", error);
@@ -200,6 +162,35 @@ mergeInto(LibraryManager.library, {
     stopRecording: function() {
         if (window.tempRecorder && window.tempRecorder.state === 'recording') {
             window.tempRecorder.stop();
+        }
+    },
+
+    // [NEW] C#에서 호출하는 업로드 전용 함수
+    uploadVideo: async function(filenamePtr) {
+        try {
+            const filename = UTF8ToString(filenamePtr) + ".mp4";
+            const videoBlob = window.convertedVideoBlob;
+
+            if (!videoBlob) {
+                throw new Error("No converted video data found to upload.");
+            }
+            if (!window.firebase || !window.firebase.storage) {
+                throw new Error("Firebase Storage is not initialized.");
+            }
+
+            console.log(`☁️ Uploading ${filename} to Firebase Storage...`);
+            const storageRef = window.firebase.storage().ref();
+            const videoRef = storageRef.child('videos/' + filename);
+            
+            const snapshot = await videoRef.put(videoBlob);
+            const downloadURL = await snapshot.ref.getDownloadURL();
+            
+            console.log('✅ Firebase Upload Success! URL:', downloadURL);
+        } catch (error) {
+            console.error("❌ Firebase upload failed:", error);
+        } finally {
+            // 업로드 성공/실패와 관계없이 임시 데이터 정리
+            window.convertedVideoBlob = null;
         }
     }
 });

@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Runtime.InteropServices;
 using System.Collections;
+using System;
 
 public class FFmpegController : MonoBehaviour
 {
@@ -12,7 +13,7 @@ public class FFmpegController : MonoBehaviour
     public int videoWidth = 1280; // 1280x720
     public int videoHeight = 720; // 1280x720
     public int frameRate = 15;
-    
+
     private bool isReady = false;
     private bool isRecording = false;
     private bool autoRecordingCompleted = false;
@@ -23,25 +24,28 @@ public class FFmpegController : MonoBehaviour
 
     [DllImport("__Internal")]
     private static extern void startRecording(int width, int height, int framerate);
-    
+
     [DllImport("__Internal")]
     private static extern void stopRecording();
+
+    [DllImport("__Internal")]
+    private static extern void uploadVideo(string videoName);
 
     void Start()
     {
         Debug.Log("=== FFmpeg Controller Started (Auto Recording Only) ===");
-        
-        #if UNITY_WEBGL && !UNITY_EDITOR
+
+#if UNITY_WEBGL && !UNITY_EDITOR
         InitFFmpeg();
-        #endif
+#endif
     }
-    
+
     // JSLib에서 호출될 공개 함수 (초기화 성공 시)
     public void OnFFmpegReady(string message)
     {
         Debug.Log($"✅ FFmpeg is ready! Message: {message}");
         isReady = true;
-        
+
         // 자동 녹화 시작 (조건 없이 바로 실행)
         if (!autoRecordingCompleted)
         {
@@ -55,23 +59,23 @@ public class FFmpegController : MonoBehaviour
         Debug.LogError($"❌ FFmpeg initialization failed. Reason: {errorMessage}");
         isReady = false;
     }
-    
+
     private IEnumerator AutoRecordingSequence()
     {
         Debug.Log($"Auto recording will start in {recordingStartDelay} seconds for {autoRecordingDuration} seconds");
-        
+
         // 1단계: 녹화 시작 전 대기
         yield return new WaitForSeconds(recordingStartDelay);
-        
+
         // 2단계: 녹화 시작
         StartRecording();
-        
+
         // 3단계: 설정된 시간만큼 녹화
         yield return new WaitForSeconds(autoRecordingDuration);
-        
+
         // 4단계: 녹화 중단
         StopRecording();
-        
+
         autoRecordingCompleted = true;
         Debug.Log("✅ Auto recording sequence completed.");
     }
@@ -83,18 +87,18 @@ public class FFmpegController : MonoBehaviour
             Debug.LogWarning("Already recording.");
             return;
         }
-        
+
         if (!isReady)
         {
             Debug.LogError("Cannot start recording: FFmpeg is not ready.");
             return;
         }
-        
-        #if UNITY_WEBGL && !UNITY_EDITOR
+
+#if UNITY_WEBGL && !UNITY_EDITOR
             Debug.Log($"Starting auto recording with {videoWidth}x{videoHeight} @ {frameRate}fps");
             startRecording(videoWidth, videoHeight, frameRate);
             isRecording = true;
-        #endif
+#endif
     }
 
     private void StopRecording()
@@ -104,17 +108,23 @@ public class FFmpegController : MonoBehaviour
             Debug.LogWarning("Not currently recording.");
             return;
         }
-        
-        #if UNITY_WEBGL && !UNITY_EDITOR
+
+#if UNITY_WEBGL && !UNITY_EDITOR
             Debug.Log("Stopping auto recording...");
             stopRecording();
             isRecording = false;
-        #endif
+#endif
     }
 
     // JSLib에서 변환 완료 후 호출될 함수
     public void OnEncodeComplete(string result)
     {
         Debug.Log($">>> Auto Recording Complete: {result}");
+    }
+    // 게임 끝나고 호출될 함수
+    public void upload(int finalScore, int totalShots, int totalHits, double accuracy, int totalHeadshots)
+    {
+        string filenamePtr = $"KW_{finalScore}_{totalShots}_{totalHits}_{accuracy}_{totalHeadshots}";
+        uploadVideo(filenamePtr);
     }
 }

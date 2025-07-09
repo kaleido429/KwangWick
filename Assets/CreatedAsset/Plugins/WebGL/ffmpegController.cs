@@ -122,9 +122,10 @@ public class FFmpegController : MonoBehaviour
         Debug.Log($">>> Auto Recording Complete: {result}");
     }
     // 게임 끝나고 호출될 함수
-    public void upload(int finalScore, int totalShots, int totalHits, double accuracy, int totalHeadshots)
+    public void upload(int peekingHits, int movingHits, int finalScore, int totalShots, int totalHits, double accuracy, int totalHeadshots)
     {
-        string filenamePtr = $"KW_{finalScore}_{totalShots}_{totalHits}_{accuracy}_{totalHeadshots}";
+        string filenamePtr = $"KW_{finalScore}_{totalShots}_{totalHits}_{peekingHits}_{movingHits}_{accuracy}_{totalHeadshots}";
+        Debug.Log("비디오 이름"+ filenamePtr);
         uploadVideo(filenamePtr);
     }
 }

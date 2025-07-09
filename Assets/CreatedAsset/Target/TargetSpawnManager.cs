@@ -12,13 +12,17 @@ public class TargetSpawnManager : MonoBehaviour
         public float respawnDelay;
     }
 
-    [SerializeField] private TargetSettings peekingTargets;  // 장애물 뒤에서 피킹하는 타겟
-    [SerializeField] private TargetSettings movingTargets;   // 멀리서 움직이는 타겟
+    [SerializeField] private TargetSettings peekingTargets;
+    [SerializeField] private TargetSettings movingTargets;
 
     private List<GameObject> activePeekingTargets = new List<GameObject>();
     private List<GameObject> activeMovingTargets = new List<GameObject>();
     private List<float> peekingTargetTimers = new List<float>();
     private List<float> movingTargetTimers = new List<float>();
+
+    // 피킹 타겟과 움직이는 타겟의 마지막 스폰 포인트를 별도로 추적
+    private Transform lastUsedPeekingSpawnPoint;
+    private Transform lastUsedMovingSpawnPoint;
 
     void Start()
     {
@@ -27,89 +31,59 @@ public class TargetSpawnManager : MonoBehaviour
         InitialSpawn();
     }
 
-    // Update is called once per frame
     void Update()
     {
-        if (peekingTargetTimers.Count > 0)
+        // 리스폰 타이머 로직 (기존과 동일)
+        HandleRespawnTimers(peekingTargetTimers, true);
+        HandleRespawnTimers(movingTargetTimers, false);
+    }
+    
+    // spawn delay
+    private void HandleRespawnTimers(List<float> timers, bool isPeeking)
+    {
+        for (int i = timers.Count - 1; i >= 0; i--)
         {
-            List<int> indicesToRemove = new List<int>();
-            for (int i = 0; i < peekingTargetTimers.Count; i++)
+            timers[i] -= Time.deltaTime;
+            if (timers[i] <= 0f)
             {
-                peekingTargetTimers[i] -= Time.deltaTime;
-                if (peekingTargetTimers[i] <= 0f)
-                {
-                    SpawnTarget(true);
-                    indicesToRemove.Add(i);
-                }
-            }
-
-            // 역순 제거
-            for (int i = indicesToRemove.Count - 1; i >= 0; i--)
-            {
-                if (indicesToRemove[i] < peekingTargetTimers.Count)
-                    peekingTargetTimers.RemoveAt(indicesToRemove[i]);
-            }
-        }
-
-        if (movingTargetTimers.Count > 0)
-        {
-            List<int> indicesToRemove = new List<int>();
-            for (int i = 0; i < movingTargetTimers.Count; i++)
-            {
-                movingTargetTimers[i] -= Time.deltaTime;
-                if (movingTargetTimers[i] <= 0f)
-                {
-                    SpawnTarget(false);
-                    indicesToRemove.Add(i);
-                }
-            }
-
-            for (int i = indicesToRemove.Count - 1; i >= 0; i--)
-            {
-                if (indicesToRemove[i] < movingTargetTimers.Count)
-                    movingTargetTimers.RemoveAt(indicesToRemove[i]);
+                SpawnTarget(isPeeking);
+                timers.RemoveAt(i);
             }
         }
     }
 
-
-
     private void InitialSpawn()
     {
-        // 초기 피킹 타겟 생성
-        for (int i = 0; i < peekingTargets.maxTargets; i++)
-        {
-            SpawnTarget(true);
-        }
-
-        // 초기 움직이는 타겟 생성
-        for (int i = 0; i < movingTargets.maxTargets; i++)
-        {
-            SpawnTarget(false);
-        }
+        for (int i = 0; i < peekingTargets.maxTargets; i++) SpawnTarget(true);
+        for (int i = 0; i < movingTargets.maxTargets; i++) SpawnTarget(false);
     }
 
     private void SpawnTarget(bool isPeeking)
     {
         TargetSettings settings = isPeeking ? peekingTargets : movingTargets;
         List<GameObject> activeList = isPeeking ? activePeekingTargets : activeMovingTargets;
+        
+        // 현재 타겟 타입에 맞는 마지막 스폰 포인트를 가져옴
+        Transform lastPointToCheck = isPeeking ? lastUsedPeekingSpawnPoint : lastUsedMovingSpawnPoint;
 
-        // 최대 수에 도달했는지 확인
         if (activeList.Count >= settings.maxTargets) return;
-
-        // 스폰 포인트 확인
-        if (settings.spawnPoints == null || settings.spawnPoints.Length == 0)
+        if (settings.spawnPoints == null || settings.spawnPoints.Length < 2)
         {
-            Debug.LogWarning($"{(isPeeking ? "피킹" : "움직이는")} 타겟의 스폰 포인트가 설정되지 않았습니다!");
-            return;
+            //Debug.LogWarning($"스폰 포인트가 부족하여 중복 방지 로직을 실행할 수 없습니다. (타입: {(isPeeking ? "peeking" : "moveing")})");
+            // 스폰 포인트가 하나뿐일 경우 그냥 진행
+            if (settings.spawnPoints.Length == 1 && !settings.spawnPoints[0].GetComponent<PreventSpawnOverlap>().IsOccupied)
+            {
+                 // 로직 생략하고 바로 스폰...
+            }
+            else return;
         }
 
-        // 사용 가능한 스폰 포인트만 선택
         List<Transform> availablePoints = new List<Transform>();
         foreach (Transform point in settings.spawnPoints)
         {
             var sp = point.GetComponent<PreventSpawnOverlap>();
-            if (sp != null && !sp.IsOccupied)
+            // 현재 타겟 타입의 마지막 스폰 포인트와 비교
+            if (sp != null && !sp.IsOccupied && point != lastPointToCheck)
             {
                 availablePoints.Add(point);
             }
@@ -117,39 +91,54 @@ public class TargetSpawnManager : MonoBehaviour
 
         if (availablePoints.Count == 0)
         {
-            Debug.LogWarning("모든 스폰 포인트가 점유 중입니다!");
-            return;
+            /*
+            사용 가능한 포인트가 없다면, 마지막 포인트를 제외한 모든 포인트가 점유된 상태일 수 있음
+            이 경우, 마지막 포인트를 포함하여 다시 시도
+            */
+            if (lastPointToCheck != null && !lastPointToCheck.GetComponent<PreventSpawnOverlap>().IsOccupied)
+            {
+                availablePoints.Add(lastPointToCheck);
+            }
+
+            if(availablePoints.Count == 0)
+            {
+                Debug.Log("모든 스폰 포인트가 점유 중입니다!");
+                return;
+            }
         }
-        
+
         Transform chosenPoint = availablePoints[Random.Range(0, availablePoints.Count)];
         var chosenScript = chosenPoint.GetComponent<PreventSpawnOverlap>();
         chosenScript.SetOccupied(true);
 
         GameObject target = Instantiate(settings.targetPrefab, chosenPoint.position, chosenPoint.rotation);
-
         if (target.TryGetComponent<Target>(out Target targetScript))
         {
             targetScript.Initialize(isPeeking);
             targetScript.OnTargetDestroyed += () =>
             {
                 HandleTargetDestroyed(target, isPeeking);
-                chosenScript.SetOccupied(false); // 자리 비우기
+                chosenScript.SetOccupied(false);
             };
         }
 
-    activeList.Add(target);
+        // 현재 타겟 타입에 맞는 마지막 스폰 포인트를 업데이트
+        if (isPeeking)
+            lastUsedPeekingSpawnPoint = chosenPoint;
+        else
+            lastUsedMovingSpawnPoint = chosenPoint;
+
+        activeList.Add(target);
     }
     
     private void HandleTargetDestroyed(GameObject target, bool isPeeking)
     {
-        // 활성 리스트에서 제거
         List<GameObject> activeList = isPeeking ? activePeekingTargets : activeMovingTargets;
         if (activeList.Contains(target))
         {
             activeList.Remove(target);
         }
         
-        // 리스폰 타이머 추가
         float delay = isPeeking ? peekingTargets.respawnDelay : movingTargets.respawnDelay;
         if (isPeeking)
             peekingTargetTimers.Add(delay);
@@ -157,6 +146,7 @@ public class TargetSpawnManager : MonoBehaviour
             movingTargetTimers.Add(delay);
     }
 
+    // OnDrawGizmos (Unity 에디터에서만 사용)
     private void OnDrawGizmos()
     {
         // 피킹 타겟 스폰 포인트 시각화 (빨간색)

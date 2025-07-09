@@ -88,4 +88,7 @@ crash-reports/
 # User-specific editor settings
 UserSettings/
 
+#Build Files
+KwangWichWebGL/
+
 *.dwlt

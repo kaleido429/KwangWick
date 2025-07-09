@@ -184,7 +184,7 @@ MonoBehaviour:
     - {fileID: 1279883189}
     - {fileID: 1201614254}
     - {fileID: 1657747043}
-    maxTargets: 3
+    maxTargets: 2
     respawnDelay: 2.5
   movingTargets:
     targetPrefab: {fileID: 8047319040263427488, guid: 331c031f4f95a244490b441901773ac0, type: 3}

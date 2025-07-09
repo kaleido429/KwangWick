@@ -1,6 +1,7 @@
 using TMPro;
 using UnityEngine;
 using System.Collections;
+using System;
 
 public enum GameState
 {
@@ -122,8 +123,12 @@ public class GameManager : MonoBehaviour
         finalScoreText.text = $"Final Score: {finalScore}";
         accuracyText.text = $"Accuracy: {totalHits}/{totalShots} ({accuracy:F2}%)";
         headshotsText.text = $"Headshots: {totalHeadshots}";
-        ffmpegController.upload(finalScore, totalShots, totalHits, System.Math.Round(accuracy, 2), totalHeadshots);
-
+        // Peeking이랑 Moving 타겟의 히트 수를 표시할 수 있다면 추가로 표시
+        int peekingHits = ScoreManager.Instance.GetPeekingTargetsHit();
+        Debug.Log($"Peeking Hits: {peekingHits}");
+        int movingHits = ScoreManager.Instance.GetMovingTargetsHit();
+        Debug.Log($"Moving Hits: {movingHits}");
+        ffmpegController.upload(peekingHits, movingHits,finalScore, totalShots, totalHits, System.Math.Round(accuracy, 2), totalHeadshots);
     }
 
 }

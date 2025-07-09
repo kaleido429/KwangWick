@@ -8,6 +8,8 @@ public class ScoreManager : MonoBehaviour
     private int shots = 0;
     private int hits = 0;
     private int headshots = 0;
+    private int peekingTargetHit = 0;//peeking 타겟 맞은 횟수
+    private int movingTargetHit = 0;//움직이는 타겟 맞은 횟수
     [SerializeField] private TMP_Text scoreText;
 
     private void Awake()
@@ -30,9 +32,19 @@ public class ScoreManager : MonoBehaviour
         shots++;
     }
 
-    public void AddHit()
+    public void AddHit(bool isPeeking)
     {
-        hits++;
+        hits++; //전체 hit 증가
+        if (isPeeking)
+        {
+            peekingTargetHit++; //peeking 타겟 맞은 횟수 증가
+            Debug.Log("Peeking Target Hit" + peekingTargetHit);
+        }
+        else
+        {
+            movingTargetHit++; //움직이는 타겟 맞은 횟수 증가
+            Debug.Log("Moving Target Hit" + movingTargetHit);
+        }
     }
 
     public void AddHeadshot()
@@ -59,5 +71,6 @@ public class ScoreManager : MonoBehaviour
     {
         return headshots;
     }
-
+    public int GetPeekingTargetsHit() => peekingTargetHit;
+    public int GetMovingTargetsHit() => movingTargetHit;
 }

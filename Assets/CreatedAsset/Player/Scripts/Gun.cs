@@ -23,7 +23,7 @@ public class Gun : MonoBehaviour
 		}
 	}
 
-    public int Shoot()
+    public (int hitType, bool isPeeking) Shoot()
     {
         Ray ray = new Ray(cameraTransform.position, cameraTransform.forward);
 
@@ -33,7 +33,7 @@ public class Gun : MonoBehaviour
             if (hit.collider.CompareTag("Wall"))
             {
                 Debug.Log("벽에 먼저 부딪힘.");
-                return (int)HitType.None;
+                return ((int)HitType.None, false);
             }
 
             // 2. 타겟 판정
@@ -43,22 +43,29 @@ public class Gun : MonoBehaviour
                 int damage = hit.collider.CompareTag("Head") ? headDamage : bodyDamage;
                 bool killed = target.Hit(damage);
 
-                if (damage == 3)
+                if (killed)
                 {
-                    return (int)HitType.Head;
+                    // 타겟이 죽었다면, 그것이 헤드샷 때문인지 확인
+                    if (damage == headDamage)
+                    {
+                        // 헤드샷으로 처치
+                        return ((int)HitType.Head, target.isPeeking);
+                    }
+                    else
+                    {
+                        // 몸샷으로 처치
+                        return ((int)HitType.Kill, target.isPeeking);
+                    }
                 }
-                else if (killed)
+                else // 타겟이 아직 살아있다면
                 {
-                    return (int)HitType.Kill;
-                }
-                else
-                {
-                    return (int)HitType.Body;
+                    // 타겟이 아직 살아있다면, 그것은 데미지만 입은 몸샷입니다.
+                    return ((int)HitType.Body, target.isPeeking);
                 }
             }
         }
 
-        return (int)HitType.None;
+        return ((int)HitType.None, false);
     }
 
 }

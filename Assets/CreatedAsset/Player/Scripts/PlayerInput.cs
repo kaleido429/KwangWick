@@ -42,13 +42,13 @@ public class PlayerInput : MonoBehaviour
 
         if (Gun != null)
         {
-            int hitType = Gun.Shoot();
+            var (hitType,isPeeking) = Gun.Shoot();
 
             // HitType에 따라 UI를 토글합니다.
             PlayerUIManager.ToggleHitUI(hitType);
 
             // 히트 기록을 추가합니다.
-            if (hitType > 0) ScoreManager.Instance.AddHit();
+            //if (hitType > 0) ScoreManager.Instance.AddHit(isPeeking); Hit수 관리 Target.cs에서 관리
             if(hitType == (int)HitType.Head) ScoreManager.Instance.AddHeadshot();
         }
 

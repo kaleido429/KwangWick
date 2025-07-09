@@ -73,6 +73,7 @@ public class Target : MonoBehaviour
     {
         if (currentHealth <= 0) return false;
 
+        CancelInvoke("DestroyTarget"); // 타겟이 맞았을 때 자동 파괴를 취소
         currentHealth -= damage;
         
         /* 
@@ -93,6 +94,7 @@ public class Target : MonoBehaviour
     // 타겟이 파괴될 때 (히트 또는 시간 초과)
     public void DestroyTarget()
     {
+        CancelInvoke("DestroyTarget"); // 자동 파괴 취소, 안전빵
         OnTargetDestroyed?.Invoke();
         Destroy(gameObject);
     }

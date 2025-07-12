@@ -91,4 +91,5 @@ UserSettings/
 #Build Files
 KwangWickWebGL/
 
+# dwlt files
 *.dwlt

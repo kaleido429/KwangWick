@@ -75,5 +75,20 @@ crashlytics-build.properties
 /[Aa]ssets/[Ss]treamingAssets/aa.meta
 /[Aa]ssets/[Ss]treamingAssets/aa/*
 
+# macOS
+.DS_Store
+
+# VSCode
+.vscode/
+*.code-workspace
+
+# Crash reports
+crash-reports/
+
+# User-specific editor settings
+UserSettings/
+
+#Build Files
+KwangWickWebGL/
 # dwlt files
 *.dwlt

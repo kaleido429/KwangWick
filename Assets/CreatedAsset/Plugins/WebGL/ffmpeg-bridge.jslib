@@ -55,17 +55,7 @@ mergeInto(LibraryManager.library, {
                     }
                     console.log("✅ Firebase SDKs loaded.");
                     const firebaseConfig = JSON.parse(jsonConfig);
-                    /*
-                    const firebaseConfig = {
-                        apiKey: "AIzaSyAGJ38XdodPCcUfpowFODuRx4pKotrbCS0",
-                        authDomain: "fairplayfairy-3e2eb.firebaseapp.com",
-                        projectId: "fairplayfairy-3e2eb",
-                        storageBucket: "fairplayfairy-3e2eb.firebasestorage.app",
-                        messagingSenderId: "650162719276",
-                        appId: "1:650162719276:web:90442b070eb8a72e385f89",
-                        measurementId: "G-GD8XLV1XDG"
-                    };
-                    */
+                    
                     if (!window.firebase.apps.length) {
                         window.firebase.initializeApp(firebaseConfig);
                         console.log("✅ Firebase Initialized.");

@@ -77,3 +77,6 @@ crashlytics-build.properties
 
 # dwlt files
 *.dwlt
+
+# API key
+/Assets/CreatedAsset/Plugins/WebGL/FirebaseAPI.cs

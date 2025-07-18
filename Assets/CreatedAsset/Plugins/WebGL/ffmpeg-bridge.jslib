@@ -185,6 +185,8 @@ mergeInto(LibraryManager.library, {
             const endUploadTime = performance.now();
             const uploadTime = (endUploadTime - startUploadTime) / 1000;
             console.log(`✅ Firebase Upload Success! URL: ${downloadURL} (Upload time: ${uploadTime}s)`);
+            // C#으로 업로드 완료 메시지 전송
+            SendMessage('FFmpegController', 'UploadComplete', 'SUCCESS');
         } catch (error) {
             console.error("❌ Firebase upload failed:", error);
         } finally {

@@ -137,14 +137,27 @@ public class FFmpegController : MonoBehaviour
 
     // JSLib에서 변환 완료 후 호출될 함수
     public void OnEncodeComplete(string result)
-    {   
+    {
         Debug.Log("result: " + result);
     }
     // 게임 끝나고 호출될 함수
     public void upload(int peekingHits, int movingHits, int finalScore, int totalShots, int totalHits, double accuracy, int totalHeadshots)
     {
         string filenamePtr = $"KW_{finalScore}_{totalShots}_{totalHits}_{peekingHits}_{movingHits}_{accuracy}_{totalHeadshots}";
-        Debug.Log("비디오 이름"+ filenamePtr);
+        Debug.Log("비디오 이름" + filenamePtr);
         uploadVideo(filenamePtr);
+    }
+
+    public void UploadComplete(string message)
+    {
+        if (message == "SUCCESS")
+        {
+            Debug.Log("video upload success");
+            // 씬 처리 or UI 업데이트
+        }
+        else
+        {
+            Debug.Log("video upload failed");
+        }
     }
 }

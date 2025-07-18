@@ -1,7 +1,7 @@
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 using System.Collections;
-using System;
 
 public enum GameState
 {
@@ -14,6 +14,7 @@ public class GameManager : MonoBehaviour
 {
     public static GameManager Instance;
     public GameState state;
+    public int playTimeInSeconds = 60; // 게임 플레이 시간 (초 단위)
     public GameObject countdownPanel;
     public GameObject resultPanel;
     [SerializeField] private TMP_Text countdownText;
@@ -22,13 +23,21 @@ public class GameManager : MonoBehaviour
     [SerializeField] private TMP_Text accuracyText;
     [SerializeField] private TMP_Text headshotsText;
     [SerializeField] private FFmpegController ffmpegController;
-    private float sec;
-    private int min;
+    [SerializeField] private Button uploadButton;
 
     public GameObject[] objectsToDisable; // 끌 오브젝트 배열
-
     public GameObject playerGameObject;
     private PlayerInput playerInput;
+
+    private float sec;
+    private int min;
+    private int peekingHits;
+    private int movingHits;
+    private int finalScore;
+    private int totalShots;
+    private int totalHits;
+    private double accuracy;
+    private int totalHeadshots;
 
     private void Awake()
     {
@@ -96,14 +105,15 @@ public class GameManager : MonoBehaviour
         state = GameState.Playing;                  // 게임 시작
         playerInput.SetInputActive(true);           // 플레이어 입력 활성화
         countdownPanel.SetActive(false);
-        sec = 0f;
-        min = 1;
+        min = playTimeInSeconds / 60; // 플레이 시간 분 단위로 변환
+        sec = playTimeInSeconds % 60; // 남은 초 계산
     }
 
     public void GameEnd()
     {
         state = GameState.End;
-        Time.timeScale = 0f; // 게임 일시정지
+        Time.timeScale = 0f;                // 게임 일시정지
+        playerInput.SetInputActive(false);  // 플레이어 입력 비활성화
 
         foreach (GameObject obj in objectsToDisable)
         {
@@ -113,22 +123,38 @@ public class GameManager : MonoBehaviour
         Cursor.visible = true;
         Cursor.lockState = CursorLockMode.None;
 
-        int finalScore = ScoreManager.Instance.GetScore();
-        int totalShots = ScoreManager.Instance.GetShots();
-        int totalHits = ScoreManager.Instance.GetHits();
-        int totalHeadshots = ScoreManager.Instance.GetHeadshots();
-        double accuracy = totalShots > 0 ? (double)totalHits / totalShots * 100 : 0;
+        finalScore = ScoreManager.Instance.GetScore();
+        totalShots = ScoreManager.Instance.GetShots();
+        totalHits = ScoreManager.Instance.GetHits();
+        totalHeadshots = ScoreManager.Instance.GetHeadshots();
+        accuracy = totalShots > 0 ? (double)totalHits / totalShots * 100 : 0;
 
         resultPanel.SetActive(true);
         finalScoreText.text = $"Final Score: {finalScore}";
         accuracyText.text = $"Accuracy: {totalHits}/{totalShots} ({accuracy:F2}%)";
         headshotsText.text = $"Headshots: {totalHeadshots}";
         // Peeking이랑 Moving 타겟의 히트 수를 표시할 수 있다면 추가로 표시
-        int peekingHits = ScoreManager.Instance.GetPeekingTargetsHit();
+        peekingHits = ScoreManager.Instance.GetPeekingTargetsHit();
         //Debug.Log($"Peeking Hits: {peekingHits}");
-        int movingHits = ScoreManager.Instance.GetMovingTargetsHit();
+        movingHits = ScoreManager.Instance.GetMovingTargetsHit();
         //Debug.Log($"Moving Hits: {movingHits}");
-        ffmpegController.upload(peekingHits, movingHits, finalScore, totalShots, totalHits, System.Math.Round(accuracy, 2), totalHeadshots);
+
+        // 비디오 업로드 버튼 활성화
+        uploadButton.interactable = true;
+    }
+
+    public void UploadVideoOnGameEnd()
+    {
+        // 비디오 업로드 버튼이 클릭되면 FFmpegController의 upload 메서드를 호출
+        //ffmpegController.upload(peekingHits, movingHits, finalScore, totalShots, totalHits, System.Math.Round(accuracy, 2), totalHeadshots);
+
+        // 업로드 후 버튼 비활성화
+        uploadButton.interactable = false;
+
+        Debug.Log("비디오 업로드 요청이 전송되었습니다.");
+
+        // 업로드 성공 메시지로 변경
+        uploadButton.GetComponentInChildren<TMP_Text>().text = "Upload Success!";
     }
 
 }

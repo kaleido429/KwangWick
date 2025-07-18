@@ -73,6 +73,7 @@
     <Compile Include="Assets\CreatedAsset\Player\Scripts\PlayerManager.cs" />
     <Compile Include="Assets\CreatedAsset\Resource\Scripts\MouseSettings.cs" />
     <Compile Include="Assets\CreatedAsset\Plugins\WebGL\ffmpegController.cs" />
+    <Compile Include="Assets\CreatedAsset\Plugins\WebGL\FirebaseAPI.cs" />
     <Compile Include="Assets\CreatedAsset\Resource\Scripts\GameManager.cs" />
     <Compile Include="Assets\CreatedAsset\Player\Scripts\PlayerInfo.cs" />
     <Compile Include="Assets\CreatedAsset\Target\PreventSpawnOverlap.cs" />

@@ -2,6 +2,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using System.Collections;
+using System.Text;
 
 public enum GameState
 {
@@ -22,6 +23,8 @@ public class GameManager : MonoBehaviour
     [SerializeField] private TMP_Text finalScoreText;
     [SerializeField] private TMP_Text accuracyText;
     [SerializeField] private TMP_Text headshotsText;
+    [SerializeField] private TMP_Text peekingHitText;
+    [SerializeField] private TMP_Text movingHitText;
     [SerializeField] private FFmpegController ffmpegController;
     [SerializeField] private Button uploadButton;
 
@@ -38,6 +41,7 @@ public class GameManager : MonoBehaviour
     private int totalHits;
     private double accuracy;
     private int totalHeadshots;
+    private bool isUploadFailed = false;
 
     private void Awake()
     {
@@ -105,14 +109,13 @@ public class GameManager : MonoBehaviour
         state = GameState.Playing;                  // 게임 시작
         playerInput.SetInputActive(true);           // 플레이어 입력 활성화
         countdownPanel.SetActive(false);
-        min = playTimeInSeconds / 60; // 플레이 시간 분 단위로 변환
-        sec = playTimeInSeconds % 60; // 남은 초 계산
+        min = playTimeInSeconds / 60;               // 플레이 시간 분 단위로 변환
+        sec = playTimeInSeconds % 60;               // 남은 초 계산
     }
 
     public void GameEnd()
     {
         state = GameState.End;
-        Time.timeScale = 0f;                // 게임 일시정지
         playerInput.SetInputActive(false);  // 플레이어 입력 비활성화
 
         foreach (GameObject obj in objectsToDisable)
@@ -128,30 +131,80 @@ public class GameManager : MonoBehaviour
         totalHits = ScoreManager.Instance.GetHits();
         totalHeadshots = ScoreManager.Instance.GetHeadshots();
         accuracy = totalShots > 0 ? (double)totalHits / totalShots * 100 : 0;
-
-        resultPanel.SetActive(true);
-        finalScoreText.text = $"Final Score: {finalScore}";
-        accuracyText.text = $"Accuracy: {totalHits}/{totalShots} ({accuracy:F2}%)";
-        headshotsText.text = $"Headshots: {totalHeadshots}";
-        // Peeking이랑 Moving 타겟의 히트 수를 표시할 수 있다면 추가로 표시
         peekingHits = ScoreManager.Instance.GetPeekingTargetsHit();
-        //Debug.Log($"Peeking Hits: {peekingHits}");
         movingHits = ScoreManager.Instance.GetMovingTargetsHit();
-        //Debug.Log($"Moving Hits: {movingHits}");
+
+        // 결과 패널 활성화 및 텍스트 설정
+        resultPanel.SetActive(true);
+        finalScoreText.gameObject.SetActive(false);
+        accuracyText.gameObject.SetActive(false);
+        headshotsText.gameObject.SetActive(false);
+        peekingHitText.gameObject.SetActive(false);
+        movingHitText.gameObject.SetActive(false);
+        uploadButton.gameObject.SetActive(false);
+
+        // 결과 텍스트 설정
+        finalScoreText.text = $"Final Score : {finalScore}";
+        accuracyText.text = $"Accuracy : {totalHits}/{totalShots} ({accuracy:F2}%)";
+        headshotsText.text = $"Headshots : {totalHeadshots}";
+        peekingHitText.text = $"Peeking Target Hit : {peekingHits}";
+        movingHitText.text = $"Moving Target Hit : {movingHits}";
+
+        // FFmpegController의 upload 메서드를 호출하여 비디오 업로드
+        ffmpegController.upload(peekingHits, movingHits, finalScore, totalShots, totalHits, System.Math.Round(accuracy, 2), totalHeadshots);
+
+        // 텍스트 효과를 적용하여 결과 텍스트 표시
+        StartCoroutine(TypeTextEffect(0.1f));       // 10초 정도 딜레이
+    }
+
+    public IEnumerator TypeSingleText(TMP_Text textComponent, string text, float delay)
+    {
+        textComponent.text = "";                    // 텍스트 초기화
+        textComponent.gameObject.SetActive(true);   // 텍스트 컴포넌트 활성화
+        StringBuilder stringBuilder = new();
+
+        foreach (char c in text)
+        {
+            stringBuilder.Append(c);                        // 현재 문자 추가
+            textComponent.text = stringBuilder.ToString();  // 텍스트 업데이트
+            yield return new WaitForSeconds(delay);         // 딜레이 적용
+        }
+    }
+
+    public IEnumerator TypeTextEffect(float delay)
+    {
+        // 각 텍스트 컴포넌트에 대해 타이핑 효과 적용
+        yield return TypeSingleText(finalScoreText, finalScoreText.text, delay);
+        yield return new WaitForSeconds(0.5f); // 0.5초 대기
+
+        yield return TypeSingleText(accuracyText, accuracyText.text, delay);
+        yield return new WaitForSeconds(0.5f); // 0.5초 대기
+
+        yield return TypeSingleText(headshotsText, headshotsText.text, delay);
+        yield return new WaitForSeconds(0.5f); // 0.5초 대기
+
+        yield return TypeSingleText(peekingHitText, peekingHitText.text, delay);
+        yield return new WaitForSeconds(0.5f); // 0.5초 대기
+
+        yield return TypeSingleText(movingHitText, movingHitText.text, delay);
+        yield return new WaitForSeconds(0.5f); // 0.5초 대기
 
         // 비디오 업로드 버튼 활성화
+        uploadButton.gameObject.SetActive(true);
         uploadButton.interactable = true;
     }
 
     public void UploadVideoOnGameEnd()
     {
-        // 비디오 업로드 버튼이 클릭되면 FFmpegController의 upload 메서드를 호출
-        ffmpegController.upload(peekingHits, movingHits, finalScore, totalShots, totalHits, System.Math.Round(accuracy, 2), totalHeadshots);
+        if(isUploadFailed)
+        {
+            // 업로드 실패 시 다시 시도 가능
+            ffmpegController.upload(peekingHits, movingHits, finalScore, totalShots, totalHits, System.Math.Round(accuracy, 2), totalHeadshots);
+            isUploadFailed = false; // 업로드 실패 상태 초기화
+        }
 
         // 업로드 후 버튼 비활성화
         uploadButton.interactable = false;
-
-        Debug.Log("비디오 업로드 요청이 전송되었습니다.");
 
         // 비디오 업로드 중 표시
         uploadButton.GetComponentInChildren<TMP_Text>().text = "Uploading Video... Please Wait";
@@ -168,8 +221,9 @@ public class GameManager : MonoBehaviour
         else
         {
             // 비디오 업로드 실패
-            uploadButton.interactable = true; // 다시 업로드 시도 가능
-            uploadButton.GetComponentInChildren<TMP_Text>().text = "Upload Failed";
+            isUploadFailed = true;              // 업로드 실패 상태 설정
+            uploadButton.interactable = true;   // 다시 업로드 시도 가능
+            uploadButton.GetComponentInChildren<TMP_Text>().text = "Upload Failed. Try Again";
         }
     }
 

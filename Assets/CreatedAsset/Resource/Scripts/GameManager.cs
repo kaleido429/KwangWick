@@ -41,7 +41,7 @@ public class GameManager : MonoBehaviour
     private int totalHits;
     private double accuracy;
     private int totalHeadshots;
-    private bool isUploadFailed = false;
+    private bool isUploadSuccess = false; // 업로드 성공 여부
 
     private void Awake()
     {
@@ -191,16 +191,15 @@ public class GameManager : MonoBehaviour
 
         // 비디오 업로드 버튼 활성화
         uploadButton.gameObject.SetActive(true);
-        uploadButton.interactable = true;
+        uploadButton.interactable = false;
     }
 
     public void UploadVideoOnGameEnd()
     {
-        if(isUploadFailed)
+        if(isUploadSuccess == false)
         {
             // 업로드 실패 시 다시 시도 가능
             ffmpegController.upload(peekingHits, movingHits, finalScore, totalShots, totalHits, System.Math.Round(accuracy, 2), totalHeadshots);
-            isUploadFailed = false; // 업로드 실패 상태 초기화
         }
 
         // 업로드 후 버튼 비활성화
@@ -215,13 +214,14 @@ public class GameManager : MonoBehaviour
         if (isSuccess)
         {
             // 비디오 업로드 성공
+            isUploadSuccess = true;             // 업로드 성공 상태 설정
             uploadButton.interactable = false;
             uploadButton.GetComponentInChildren<TMP_Text>().text = "Upload Success";
         }
         else
         {
             // 비디오 업로드 실패
-            isUploadFailed = true;              // 업로드 실패 상태 설정
+            isUploadSuccess = false;            // 업로드 실패 상태 설정
             uploadButton.interactable = true;   // 다시 업로드 시도 가능
             uploadButton.GetComponentInChildren<TMP_Text>().text = "Upload Failed. Try Again";
         }

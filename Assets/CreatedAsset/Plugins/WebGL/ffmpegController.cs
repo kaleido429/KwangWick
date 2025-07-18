@@ -1,18 +1,17 @@
 using UnityEngine;
 using System.Runtime.InteropServices;
 using System.Collections;
-using System;
 
 public class FFmpegController : MonoBehaviour
 {
     [Header("Auto Recording Settings")]
-    public float autoRecordingDuration = 10f;
+    public float autoRecordingDuration = 30f;
     public float recordingStartDelay = 1f;
 
     [Header("Video Settings")]
     public int videoWidth = 1280; // 1280x720
     public int videoHeight = 720; // 1280x720
-    public int frameRate = 15;
+    public int frameRate = 30;
 
     private bool isReady = false;
     private bool isRecording = false;

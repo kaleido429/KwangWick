@@ -27,6 +27,9 @@ public class FFmpegController : MonoBehaviour
         public string appId;
         public string measurementId;
     }
+
+    public GameManager gameManager; // UI 업데이트를 위한 GameManager 참조
+
     // --- JSLib 함수 선언 ---
     [DllImport("__Internal")]
     private static extern void InitFFmpeg(string FirebaseConfig);
@@ -152,12 +155,12 @@ public class FFmpegController : MonoBehaviour
     {
         if (message == "SUCCESS")
         {
-            Debug.Log("video upload success");
-            // 씬 처리 or UI 업데이트
+            gameManager.IsUploadSuccess(true);
         }
         else
         {
-            Debug.Log("video upload failed");
+            gameManager.IsUploadSuccess(false);
         }
     }
+
 }

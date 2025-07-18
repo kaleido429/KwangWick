@@ -146,15 +146,31 @@ public class GameManager : MonoBehaviour
     public void UploadVideoOnGameEnd()
     {
         // 비디오 업로드 버튼이 클릭되면 FFmpegController의 upload 메서드를 호출
-        //ffmpegController.upload(peekingHits, movingHits, finalScore, totalShots, totalHits, System.Math.Round(accuracy, 2), totalHeadshots);
+        ffmpegController.upload(peekingHits, movingHits, finalScore, totalShots, totalHits, System.Math.Round(accuracy, 2), totalHeadshots);
 
         // 업로드 후 버튼 비활성화
         uploadButton.interactable = false;
 
         Debug.Log("비디오 업로드 요청이 전송되었습니다.");
 
-        // 업로드 성공 메시지로 변경
-        uploadButton.GetComponentInChildren<TMP_Text>().text = "Upload Success!";
+        // 비디오 업로드 중 표시
+        uploadButton.GetComponentInChildren<TMP_Text>().text = "Uploading Video... Please Wait";
+    }
+
+    public void IsUploadSuccess(bool isSuccess)
+    {
+        if (isSuccess)
+        {
+            // 비디오 업로드 성공
+            uploadButton.interactable = false;
+            uploadButton.GetComponentInChildren<TMP_Text>().text = "Upload Success";
+        }
+        else
+        {
+            // 비디오 업로드 실패
+            uploadButton.interactable = true; // 다시 업로드 시도 가능
+            uploadButton.GetComponentInChildren<TMP_Text>().text = "Upload Failed";
+        }
     }
 
 }

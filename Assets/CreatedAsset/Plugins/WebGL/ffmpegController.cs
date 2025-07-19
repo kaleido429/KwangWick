@@ -1,26 +1,38 @@
 using UnityEngine;
 using System.Runtime.InteropServices;
 using System.Collections;
-using System;
 
 public class FFmpegController : MonoBehaviour
 {
     [Header("Auto Recording Settings")]
-    public float autoRecordingDuration = 10f;
+    public float autoRecordingDuration = 30f;
     public float recordingStartDelay = 1f;
 
     [Header("Video Settings")]
     public int videoWidth = 1280; // 1280x720
     public int videoHeight = 720; // 1280x720
-    public int frameRate = 15;
+    public int frameRate = 30;
 
     private bool isReady = false;
     private bool isRecording = false;
     private bool autoRecordingCompleted = false;
+    [System.Serializable]
+    public class FirebaseConfig
+    {
+        public string apiKey;
+        public string authDomain;
+        public string projectId;
+        public string storageBucket;
+        public string messagingSenderId;
+        public string appId;
+        public string measurementId;
+    }
+
+    public GameManager gameManager; // UI 업데이트를 위한 GameManager 참조
 
     // --- JSLib 함수 선언 ---
     [DllImport("__Internal")]
-    private static extern void InitFFmpeg();
+    private static extern void InitFFmpeg(string FirebaseConfig);
 
     [DllImport("__Internal")]
     private static extern void startRecording(int width, int height, int framerate);
@@ -36,7 +48,17 @@ public class FFmpegController : MonoBehaviour
         Debug.Log("=== FFmpeg Controller Started (Auto Recording Only) ===");
 
 #if UNITY_WEBGL && !UNITY_EDITOR
-        InitFFmpeg();
+        FirebaseConfig config = new FirebaseConfig
+        {
+            apiKey = FirebaseAPI.apiKey,
+            authDomain = FirebaseAPI.authDomain,
+            projectId = FirebaseAPI.projectId,
+            storageBucket = FirebaseAPI.storageBucket,
+            messagingSenderId = FirebaseAPI.messagingSenderId,
+            appId = FirebaseAPI.appId,
+            measurementId = FirebaseAPI.measurementId
+        };
+        InitFFmpeg(JsonUtility.ToJson(config));
 #endif
     }
 
@@ -119,13 +141,26 @@ public class FFmpegController : MonoBehaviour
     // JSLib에서 변환 완료 후 호출될 함수
     public void OnEncodeComplete(string result)
     {
-        Debug.Log($">>> Auto Recording Complete: {result}");
+        Debug.Log("result: " + result);
     }
     // 게임 끝나고 호출될 함수
     public void upload(int peekingHits, int movingHits, int finalScore, int totalShots, int totalHits, double accuracy, int totalHeadshots)
     {
         string filenamePtr = $"KW_{finalScore}_{totalShots}_{totalHits}_{peekingHits}_{movingHits}_{accuracy}_{totalHeadshots}";
-        Debug.Log("비디오 이름"+ filenamePtr);
+        Debug.Log("비디오 이름" + filenamePtr);
         uploadVideo(filenamePtr);
     }
+
+    public void UploadComplete(string message)
+    {
+        if (message == "SUCCESS")
+        {
+            gameManager.IsUploadSuccess(true);
+        }
+        else
+        {
+            gameManager.IsUploadSuccess(false);
+        }
+    }
+
 }

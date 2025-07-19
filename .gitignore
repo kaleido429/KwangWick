@@ -93,3 +93,6 @@ KwangWickWebGL/
 
 # dwlt files
 *.dwlt
+
+# API key
+/Assets/CreatedAsset/Plugins/WebGL/FirebaseAPI.cs

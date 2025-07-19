@@ -4,7 +4,8 @@ mergeInto(LibraryManager.library, {
     // [NEW] 변환된 비디오 데이터를 임시 저장할 전역 변수
     $convertedVideoBlob: null,
 
-    InitFFmpeg: async function() {
+    InitFFmpeg: async function(FirebaseConfig) {
+        const jsonConfig = UTF8ToString(FirebaseConfig);
         try {
             console.log("=== FFmpeg Initialization (No Worker Mode) ===");
             
@@ -22,16 +23,16 @@ mergeInto(LibraryManager.library, {
             
             const { createFFmpeg } = window.FFmpeg;
             window.ffmpeg = createFFmpeg({
-                log: true,
+                log: false,
                 corePath: 'https://unpkg.com/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js',
-                mainThread: true
+                mainThread: false
             });
 
             console.log("🔄 Loading FFmpeg core...");
             await window.ffmpeg.load();
             
-            console.log("✅ FFmpeg loaded successfully (Main Thread Only)!");
-            SendMessage('FFmpegController', 'OnFFmpegReady', 'SUCCESS_MAIN_THREAD');
+            console.log("✅ FFmpeg loaded successfully");
+            
 
             // === Firebase 초기화 시작 ===
             try {
@@ -53,17 +54,8 @@ mergeInto(LibraryManager.library, {
                         });
                     }
                     console.log("✅ Firebase SDKs loaded.");
-
-                    const firebaseConfig = {
-                        apiKey: "AIzaSyAGJ38XdodPCcUfpowFODuRx4pKotrbCS0",
-                        authDomain: "fairplayfairy-3e2eb.firebaseapp.com",
-                        projectId: "fairplayfairy-3e2eb",
-                        storageBucket: "fairplayfairy-3e2eb.firebasestorage.app",
-                        messagingSenderId: "650162719276",
-                        appId: "1:650162719276:web:90442b070eb8a72e385f89",
-                        measurementId: "G-GD8XLV1XDG"
-                    };
-
+                    const firebaseConfig = JSON.parse(jsonConfig);
+                    
                     if (!window.firebase.apps.length) {
                         window.firebase.initializeApp(firebaseConfig);
                         console.log("✅ Firebase Initialized.");
@@ -71,7 +63,9 @@ mergeInto(LibraryManager.library, {
 
                     await window.firebase.auth().signInAnonymously();
                     console.log("✅ Firebase signed in anonymously.");
-
+                    const user = window.firebase.auth().currentUser;
+                    console.log("인증 상태:", user ? "인증됨" : "인증 안 됨");
+                    SendMessage('FFmpegController', 'OnFFmpegReady', 'SUCCESS_MAIN_THREAD');
                 } else {
                     console.log("✅ Firebase already initialized.");
                 }
@@ -109,7 +103,7 @@ mergeInto(LibraryManager.library, {
             // [REFACTORED] onstop 이벤트 핸들러: 변환 후 임시 저장까지만 수행
             window.tempRecorder.onstop = async () => {
                 console.log("⏹️ Recording stopped. Processing...");
-                
+                const startEncodingTime = performance.now();
                 try {
                     if (!window.tempChunks || window.tempChunks.length === 0) {
                         throw new Error("No data recorded.");
@@ -137,7 +131,9 @@ mergeInto(LibraryManager.library, {
                     
                     // [CHANGED] 변환된 비디오 데이터를 전역 변수에 저장
                     window.convertedVideoBlob = new Blob([outputData.buffer], { type: 'video/mp4' });
-                    console.log("✅ Video converted and ready for upload.");
+                    const endEncodingTime = performance.now();
+                    const encodingTime = (endEncodingTime - startEncodingTime) / 1000;
+                    console.log(`✅ Video converted and ready for upload. (Encoding time: ${encodingTime}s)`);
 
                     // C#으로 변환 완료를 알림
                     SendMessage('FFmpegController', 'OnEncodeComplete', 'SUCCESS');
@@ -167,6 +163,7 @@ mergeInto(LibraryManager.library, {
 
     // [NEW] C#에서 호출하는 업로드 전용 함수
     uploadVideo: async function(filenamePtr) {
+        const startUploadTime = performance.now();
         try {
             const filename = UTF8ToString(filenamePtr) + ".mp4";
             const videoBlob = window.convertedVideoBlob;
@@ -185,7 +182,11 @@ mergeInto(LibraryManager.library, {
             const snapshot = await videoRef.put(videoBlob);
             const downloadURL = await snapshot.ref.getDownloadURL();
             
-            console.log('✅ Firebase Upload Success! URL:', downloadURL);
+            const endUploadTime = performance.now();
+            const uploadTime = (endUploadTime - startUploadTime) / 1000;
+            console.log(`✅ Firebase Upload Success! URL: ${downloadURL} (Upload time: ${uploadTime}s)`);
+            // C#으로 업로드 완료 메시지 전송
+            SendMessage('FFmpegController', 'UploadComplete', 'SUCCESS');
         } catch (error) {
             console.error("❌ Firebase upload failed:", error);
         } finally {

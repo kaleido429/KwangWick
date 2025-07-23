@@ -1,12 +1,14 @@
 using UnityEngine;
 using System.Runtime.InteropServices;
 using System.Collections;
+using System;
 
 public class FFmpegController : MonoBehaviour
 {
     [Header("Auto Recording Settings")]
     public float autoRecordingDuration = 30f;
     public float recordingStartDelay = 1f;
+
 
     [Header("Video Settings")]
     public int videoWidth = 1280; // 1280x720
@@ -42,6 +44,9 @@ public class FFmpegController : MonoBehaviour
 
     [DllImport("__Internal")]
     private static extern void uploadVideo(string videoName);
+
+    [DllImport("__Internal")]
+    private static extern void uploadMetadata(string metadata);
 
     void Start()
     {
@@ -142,13 +147,22 @@ public class FFmpegController : MonoBehaviour
     public void OnEncodeComplete(string result)
     {
         Debug.Log("result: " + result);
+        if (result == "SUCCESS")
+        {
+            //UUID 생성
+            Guid uuid = Guid.NewGuid();
+            Debug.Log("Generated UUID: " + uuid);
+            uploadVideo(uuid.ToString()); // UUID를 비디오 이름으로 사용
+        }
     }
-    // 게임 끝나고 호출될 함수
-    public void upload(int peekingHits, int movingHits, int finalScore, int totalShots, int totalHits, double accuracy, int totalHeadshots)
+ 
+    
+
+    public void metadata(int peekingHits, int movingHits, int finalScore, int totalShots, int totalHits, double accuracy, int totalHeadshots)
     {
-        string filenamePtr = $"KW_{finalScore}_{totalShots}_{totalHits}_{peekingHits}_{movingHits}_{accuracy}_{totalHeadshots}";
-        Debug.Log("비디오 이름" + filenamePtr);
-        uploadVideo(filenamePtr);
+        string metaData = $"{{\"peekingHits\":{peekingHits},\"movingHits\":{movingHits},\"finalScore\":{finalScore},\"totalShots\":{totalShots},\"totalHits\":{totalHits},\"accuracy\":{accuracy},\"totalHeadshots\":{totalHeadshots}}}";
+        Debug.Log("metadata: " + metaData);
+        uploadMetadata(metaData);
     }
 
     public void UploadComplete(string message)

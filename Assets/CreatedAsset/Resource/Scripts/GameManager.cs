@@ -150,8 +150,8 @@ public class GameManager : MonoBehaviour
         peekingHitText.text = $"Peeking Target Hit : {peekingHits}";
         movingHitText.text = $"Moving Target Hit : {movingHits}";
 
-        // FFmpegController의 upload 메서드를 호출하여 비디오 업로드
-        ffmpegController.upload(peekingHits, movingHits, finalScore, totalShots, totalHits, System.Math.Round(accuracy, 2), totalHeadshots);
+        // FFmpegController의 upload 메서드를 호출하여 비디오 업로드 -> 영상 녹화 끝나자마자 업로드
+        ffmpegController.metadata(peekingHits, movingHits, finalScore, totalShots, totalHits, System.Math.Round(accuracy, 2), totalHeadshots);
 
         // 텍스트 효과를 적용하여 결과 텍스트 표시
         StartCoroutine(TypeTextEffect(0.1f));       // 10초 정도 딜레이
@@ -199,7 +199,7 @@ public class GameManager : MonoBehaviour
         if(isUploadSuccess == false)
         {
             // 업로드 실패 시 다시 시도 가능
-            ffmpegController.upload(peekingHits, movingHits, finalScore, totalShots, totalHits, System.Math.Round(accuracy, 2), totalHeadshots);
+            ffmpegController.metadata(peekingHits, movingHits, finalScore, totalShots, totalHits, System.Math.Round(accuracy, 2), totalHeadshots);
         }
 
         // 업로드 후 버튼 비활성화

@@ -3,7 +3,8 @@ mergeInto(LibraryManager.library, {
 
     // [MODIFIED] 전역 변수 이름을 recordedVideoBlob으로 통일합니다.
     $recordedVideoBlob: null,
-
+    //GUID를 저장할 전역변수
+    $uuid: null,
     InitFFmpeg: async function(FirebaseConfig) {
         const jsonConfig = UTF8ToString(FirebaseConfig);
         try {
@@ -42,7 +43,8 @@ mergeInto(LibraryManager.library, {
                     const firebaseScripts = [
                         "https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js",
                         "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js",
-                        "https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js"
+                        "https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js",
+                        "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"
                     ];
 
                     for (const src of firebaseScripts) {
@@ -166,6 +168,9 @@ mergeInto(LibraryManager.library, {
             console.log(`✅ Firebase Upload Success! URL: ${downloadURL} (Upload time: ${uploadTime}s)`);
             // C#으로 업로드 완료 메시지 전송
             SendMessage('FFmpegController', 'UploadComplete', 'SUCCESS');
+            // [MODIFIED] 업로드 후 UUID를 저장합니다.
+            window.$uuid = filename.replace(/\.webm$/, ""); //확장자 빼서 UUID로 사용
+            console.log("UUID:", window.$uuid);
         } catch (error) {
             console.error("❌ Firebase upload failed:", error);
             SendMessage('FFmpegController', 'UploadComplete', 'FAIL: ' + error.message);
@@ -173,5 +178,34 @@ mergeInto(LibraryManager.library, {
             // [MODIFIED] 업로드 후 정리할 변수 이름도 통일합니다.
             window.recordedVideoBlob = null;
         }
+    },
+
+    uploadMetadata: async function(metaData) {
+        try {
+            // Firestore SDK가 로드되어 있는지 확인
+            if (!window.firebase || !window.firebase.firestore) {
+                throw new Error("Firebase Firestore is not initialized.");
+            }
+            if (!window.$uuid) {
+                throw new Error("UUID is missing.");
+            }
+
+            // Firestore 인스턴스 가져오기
+            const firestore = window.firebase.firestore();
+
+            // metaData가 JSON 문자열이면 파싱
+            let metaDataString = UTF8ToString(metaData);
+            let dataObj = JSON.parse(metaDataString);
+
+            // game_results 컬렉션에 uuid를 문서ID로 저장
+            await firestore.collection('game_results').doc(window.$uuid).set(dataObj);
+
+            console.log(`✅ Firestore에 메타데이터 저장 완료 (UUID: ${window.$uuid})`);
+            SendMessage('FFmpegController', 'UploadComplete', 'SUCCESS');
+        } catch (error) {
+            console.error("❌ Firestore 메타데이터 저장 실패:", error);
+            SendMessage('FFmpegController', 'UploadComplete', 'FAIL: ' + error.message);
+        }
     }
+
 });

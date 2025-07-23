@@ -1,12 +1,13 @@
 // C# 스크립트와 직접 통신하는 함수들의 라이브러리
 mergeInto(LibraryManager.library, {
 
-    // [NEW] 변환된 비디오 데이터를 임시 저장할 전역 변수
-    $convertedVideoBlob: null,
+    // [MODIFIED] 전역 변수 이름을 recordedVideoBlob으로 통일합니다.
+    $recordedVideoBlob: null,
 
     InitFFmpeg: async function(FirebaseConfig) {
         const jsonConfig = UTF8ToString(FirebaseConfig);
         try {
+            /*
             console.log("=== FFmpeg Initialization (No Worker Mode) ===");
             
             if (typeof window.FFmpeg === 'undefined') {
@@ -32,7 +33,7 @@ mergeInto(LibraryManager.library, {
             await window.ffmpeg.load();
             
             console.log("✅ FFmpeg loaded successfully");
-            
+            */
 
             // === Firebase 초기화 시작 ===
             try {
@@ -82,11 +83,12 @@ mergeInto(LibraryManager.library, {
 
     startRecording: function(width, height, framerate) {
         try {
+            /*
             if (!window.ffmpeg || !window.ffmpeg.isLoaded()) {
                 console.error("FFmpeg not ready");
                 return;
             }
-            
+            */
             const canvas = document.getElementById('unity-canvas');
             if (!canvas) return;
             
@@ -100,50 +102,26 @@ mergeInto(LibraryManager.library, {
                 if (event.data.size > 0) window.tempChunks.push(event.data);
             };
             
-            // [REFACTORED] onstop 이벤트 핸들러: 변환 후 임시 저장까지만 수행
+            //녹화 데이터 전역변수에 저장
+            // [REFACTORED] onstop 이벤트 핸들러: WebM Blob 생성만 수행
             window.tempRecorder.onstop = async () => {
                 console.log("⏹️ Recording stopped. Processing...");
-                const startEncodingTime = performance.now();
                 try {
                     if (!window.tempChunks || window.tempChunks.length === 0) {
                         throw new Error("No data recorded.");
                     }
                     
-                    const inputBlob = new Blob(window.tempChunks, { type: 'video/webm' });
-                    const inputData = new Uint8Array(await inputBlob.arrayBuffer());
-                    
-                    window.ffmpeg.FS('writeFile', 'input.webm', inputData);
-                    
-                    console.log(`📝 Converting to MP4...`);
-                    
-                    await window.ffmpeg.run(
-                        '-i', 'input.webm',
-                        '-c:v', 'libx264',
-                        '-preset', 'ultrafast',
-                        '-crf', '35',
-                        '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2',
-                        '-an',
-                        'output.mp4' // 임시 파일명 사용
-                    );
-                    
-                    const outputData = window.ffmpeg.FS('readFile', 'output.mp4');
-                    if (outputData.length === 0) throw new Error("Conversion failed.");
-                    
-                    // [CHANGED] 변환된 비디오 데이터를 전역 변수에 저장
-                    window.convertedVideoBlob = new Blob([outputData.buffer], { type: 'video/mp4' });
-                    const endEncodingTime = performance.now();
-                    const encodingTime = (endEncodingTime - startEncodingTime) / 1000;
-                    console.log(`✅ Video converted and ready for upload. (Encoding time: ${encodingTime}s)`);
+                    // 녹화된 데이터를 전역 변수에 저장
+                    window.recordedVideoBlob = new Blob(window.tempChunks, { type: 'video/webm' });
+                    window.tempChunks = []; // 임시 데이터 정리
 
-                    // C#으로 변환 완료를 알림
+                    console.log(`✅ WebM video recorded and ready for upload.`);
+                    
+                    // C#으로 녹화 완료(업로드 준비 완료)를 알림
                     SendMessage('FFmpegController', 'OnEncodeComplete', 'SUCCESS');
                     
-                    // 메모리 정리
-                    window.ffmpeg.FS('unlink', 'input.webm');
-                    window.ffmpeg.FS('unlink', 'output.mp4');
-                    
                 } catch (error) {
-                    console.error("❌ Conversion failed:", error);
+                    console.error("❌ Recording processing failed:", error);
                     SendMessage('FFmpegController', 'OnEncodeComplete', 'FAIL: ' + error.message);
                 }
             };
@@ -161,15 +139,16 @@ mergeInto(LibraryManager.library, {
         }
     },
 
-    // [NEW] C#에서 호출하는 업로드 전용 함수
+    // [MODIFIED] C#에서 호출하는 업로드 전용 함수
     uploadVideo: async function(filenamePtr) {
         const startUploadTime = performance.now();
         try {
-            const filename = UTF8ToString(filenamePtr) + ".mp4";
-            const videoBlob = window.convertedVideoBlob;
+            const filename = UTF8ToString(filenamePtr) + ".webm";
+            // [MODIFIED] recordedVideoBlob에서 데이터를 가져오도록 수정합니다.
+            const videoBlob = window.recordedVideoBlob; 
 
             if (!videoBlob) {
-                throw new Error("No converted video data found to upload.");
+                throw new Error("No recorded video data found to upload.");
             }
             if (!window.firebase || !window.firebase.storage) {
                 throw new Error("Firebase Storage is not initialized.");
@@ -178,7 +157,7 @@ mergeInto(LibraryManager.library, {
             console.log(`☁️ Uploading ${filename} to Firebase Storage...`);
             const storageRef = window.firebase.storage().ref();
             const videoRef = storageRef.child('videos/' + filename);
-            
+
             const snapshot = await videoRef.put(videoBlob);
             const downloadURL = await snapshot.ref.getDownloadURL();
             
@@ -189,9 +168,10 @@ mergeInto(LibraryManager.library, {
             SendMessage('FFmpegController', 'UploadComplete', 'SUCCESS');
         } catch (error) {
             console.error("❌ Firebase upload failed:", error);
+            SendMessage('FFmpegController', 'UploadComplete', 'FAIL: ' + error.message);
         } finally {
-            // 업로드 성공/실패와 관계없이 임시 데이터 정리
-            window.convertedVideoBlob = null;
+            // [MODIFIED] 업로드 후 정리할 변수 이름도 통일합니다.
+            window.recordedVideoBlob = null;
         }
     }
 });
